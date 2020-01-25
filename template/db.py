@@ -3,7 +3,7 @@ from table import Table
 class Database():
 
     def __init__(self):
-        self.tables = []
+        self.tables = {}
         pass
 
     def open(self):
@@ -20,10 +20,12 @@ class Database():
     """
     def create_table(self, name, num_columns, key):
         table = Table(name, num_columns, key)
+        self.tables[name] = table
         return table
 
     """
     # Deletes the specified table
     """
     def drop_table(self, name):
+        self.tables.pop(name)
         pass
