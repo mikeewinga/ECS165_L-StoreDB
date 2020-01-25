@@ -1,4 +1,4 @@
-from template.config import *
+from config import *
 
 
 class Page:
