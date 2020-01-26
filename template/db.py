@@ -4,6 +4,7 @@ class Database():
 
     def __init__(self):
         self.tables = {}
+        self.num_tables = 0;
         pass
 
     def open(self):
@@ -21,6 +22,7 @@ class Database():
     def create_table(self, name, key, num_columns):
         table = Table(name, num_columns, key)
         self.tables[name] = table
+        self.num_tables += 1;
         return table
 
     """
