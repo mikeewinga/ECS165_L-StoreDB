@@ -1,5 +1,4 @@
 from config import *
-import numpy as np
 
 class Page:
 
@@ -22,11 +21,12 @@ class Page:
             self.data[pos:pos+len(insert)] = insert
             self.num_records += 1
             return True
-        return false
+        return False
         
     def read(self, index):
         if (index < PAGESIZE/DATASIZE):
             pos = index * DATASIZE
             value = self.data[pos:pos+(DATASIZE)]
-            print("".join("\\x%02x" % i for i in value))
+            return value
+            #print("".join("\\x%02x" % i for i in value))
 
