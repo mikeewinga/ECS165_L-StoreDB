@@ -24,9 +24,15 @@ class Query:
     """
 
     def insert(self, *columns):
+<<<<<<< Updated upstream
         self.table.schema_encoding = '0' * self.table.num_columns
         
         pass
+=======
+        schema_encoding = '0' * self.table.num_columns
+        record = Record(self.table.currenr_rid, self.table.key, columns)
+        self.table.insert(schema_encoding, record)
+>>>>>>> Stashed changes
 
     """
     # Read a record with specified key
