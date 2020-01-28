@@ -4,7 +4,7 @@ class Database():
 
     def __init__(self):
         self.tables = {}
-        self.num_tables = 0;
+        self.num_tables = 0
         pass
 
     def open(self):
@@ -22,12 +22,14 @@ class Database():
     def create_table(self, name, key, num_columns):
         table = Table(name, key, num_columns)
         self.tables[name] = table
-        self.num_tables += 1;
+        self.num_tables = self.num_tables + 1
         return table
 
     """
     # Deletes the specified table
     """
     def drop_table(self, name):
-        self.tables.pop(name)
+        if name in self.tables:
+            self.tables.remove(name)
+            self.num_tables = self.num_tables - 1
         pass
