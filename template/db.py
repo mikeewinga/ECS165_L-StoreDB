@@ -30,6 +30,6 @@ class Database():
     """
     def drop_table(self, name):
         if name in self.tables:
-            self.tables.remove(name)
+            del self.tables[name]
             self.num_tables = self.num_tables - 1
         pass
