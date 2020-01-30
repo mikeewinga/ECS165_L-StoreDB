@@ -26,7 +26,7 @@ class Query:
     """
 
     def insert(self, *columns):
-        schema_encoding = '0' * self.table.num_columns
+        schema_encoding = 0
         record = Record(self.table.current_Rid, self.table.key, columns)
         self.table.insert(schema_encoding, record)
 
@@ -45,15 +45,12 @@ class Query:
     """
 
     def update(self, key, *columns):
-        #schema_bits = 1 << (self.table.num_columns - 1)
-        schema_encoding = ""
+        schema_encoding = 1 << (self.table.num_columns - 1)
         for x in columns:
             if x == None:
-                #schema_bits >> 1
-                schema_encoding += '0'
+                schema_encoding >>= 1
             else:
-                #break
-                schema_encoding += '1'
+                break
         rid = self.index.locate(key)
         record = Record(rid, self.table.key, columns)
         self.table.update(schema_encoding, record)
