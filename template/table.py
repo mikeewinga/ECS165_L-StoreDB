@@ -1,5 +1,6 @@
 from page import *
 from time import time
+import datetime
 
 INDIRECTION_COLUMN = 0
 RID_COLUMN = 1
@@ -39,7 +40,16 @@ class Table:
             offSet = offSet + self.num_columns + 4
         self.page_directory[(0,0+offSet)].write(0)
         self.page_directory[(0,1+offSet)].write(self.current_Rid)
-        self.page_directory[(0,2+offSet)].write(0)
+        stamp = datetime.datetime.now()
+        data = bytearray(8)
+        data[0:1] = stamp.year.to_bytes(2,byteorder = "big")
+        data[2] = stamp.month
+        data[3] = stamp.day
+        data[4] = stamp.hour
+        data[5] = stamp.minute
+        data[6] = stamp.second
+        #print(''.join(format(x, '02x') for x in data))
+        self.page_directory[(0,2+offSet)].write(data)
         self.page_directory[(0,3+offSet)].write(schema)
         self.current_Rid = self.current_Rid + 1
         #print(self.current_Rid)
@@ -55,6 +65,7 @@ class Table:
         offSet = (int)(index // (PAGESIZE/DATASIZE))*(4+self.num_columns)
         newIndex = (int)(index % (PAGESIZE/DATASIZE))
         for x in range(4 + self.num_columns):
+            print(self.page_directory[(0,x+offSet)].read(newIndex))
             print(int.from_bytes(self.page_directory[(0,x+offSet)].read(newIndex), byteorder = "big"), end =" ")
         print()
 
