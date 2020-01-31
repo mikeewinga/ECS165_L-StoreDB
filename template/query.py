@@ -52,8 +52,8 @@ class Query:
             else:
                 break
         rid = self.index.locate(key)
-        record = Record(rid[0], self.table.key, columns)
-        self.table.update(schema_encoding, record)
+        record = Record(0, self.table.key, columns)
+        self.table.update(rid, schema_encoding, record)
 
     """
     :param start_range: int         # Start of the key range to aggregate

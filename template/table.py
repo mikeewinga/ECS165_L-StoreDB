@@ -31,15 +31,11 @@ class Table:
         for x in range((self.num_columns + 4)):
             self.page_directory[(0,x)] = Page()
             self.page_directory[(1,x)] = Page()
-        self.current_Rid = 0
+        self.current_Rid_head = 0
+        self.current_Rid_tail = 2**64
         pass
 
-    def insert(self, schema, record):
-        offSet = 0;
-        while not self.page_directory[(0,offSet)].has_capacity():
-            offSet = offSet + self.num_columns + 4
-        self.page_directory[(0,0+offSet)].write(0)
-        self.page_directory[(0,1+offSet)].write(self.current_Rid)
+    def get_timestamp():
         stamp = datetime.datetime.now()
         data = bytearray(8)
         data[0:1] = stamp.year.to_bytes(2,byteorder = "big")
@@ -48,22 +44,61 @@ class Table:
         data[4] = stamp.hour
         data[5] = stamp.minute
         data[6] = stamp.second
+        return stamp
+
+    def insert(self, schema, record):
+        offSet = 0;
+        while not self.page_directory[(0,offSet)].has_capacity():
+            offSet = offSet + self.num_columns + 4
+        self.page_directory[(0,INDIRECTION_COLUMN+offSet)].write(0)
+        self.page_directory[(0,RID_COLUMN+offSet)].write(self.current_Rid_head)
+        data = get_timestamp()
         #print(''.join(format(x, '02x') for x in data))
-        self.page_directory[(0,2+offSet)].write(data)
-        self.page_directory[(0,3+offSet)].write(schema)
-        self.current_Rid = self.current_Rid + 1
-        #print(self.current_Rid)
+        self.page_directory[(0,TIMESTAMP_COLUMN+offSet)].write(data)
+        self.page_directory[(0,SCHEMA_ENCODING_COLUMN+offSet)].write(schema)
+        self.current_Rid_head = self.current_Rid_head + 1
+        #print(self.current_Rid_head)
         for x in range(self.num_columns):
             self.page_directory[(0,x + 4+offSet)].write(record.columns[x])
         if not self.page_directory[(0,offSet)].has_capacity():
             for x in range(self.num_columns + 4):
                 self.page_directory[(0,x + self.total_columns)] = Page()
             self.total_columns = self.total_columns + self.num_columns + 4
-            
-            
+
+    def update(self, base_rid, tail_schema, record):
+        base_offset = (int)(base_rid // (PAGESIZE/DATASIZE))*(4+self.num_columns) # offset is page index
+        record_index = (int)(base_rid % (PAGESIZE/DATASIZE)) # newIndex is record index
+        prev_update_rid = select(base_rid, INDIRECTION_COLUMN) #FIXME may need to fix this line later
+
+        #add new tail record
+        offSet = 0;
+        while not self.page_directory[(1,offSet)].has_capacity(): # finds the empty offset to insert new record at
+            offSet = offSet + self.num_columns + 4
+        self.page_directory[(1,INDIRECTION_COLUMN+offSet)].write(prev_update_rid) # set indir to previous update rid
+        self.page_directory[(1,RID_COLUMN+offSet)].write(self.current_Rid_tail) # set the rid of tail page
+        data = get_timestamp()
+        self.page_directory[(1,TIMESTAMP_COLUMN+offSet)].write(data) # set the timestamp
+        self.page_directory[(1,SCHEMA_ENCODING_COLUMN+offSet)].write(tail_schema) # set the schema encoding
+        for x in range(self.num_columns): # copy in record data
+            self.page_directory[(1,x + 4+offSet)].write(record.columns[x])
+        #expand the tail page if needed
+        if not self.page_directory[(1,offSet)].has_capacity():
+            for x in range(self.num_columns + 4):
+                self.page_directory[(1,x + self.total_columns)] = Page()
+            #self.total_columns = self.total_columns + self.num_columns + 4
+
+        # set base record indirection to rid of new tail record
+        self.page_directory[(0,INDIRECTION_COLUMN+base_offset)].write(self.current_Rid_tail)
+        # change schema of base record
+        cur_base_schema = self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_offset)].read(record_index)
+        new_base_schema = cur_base_schema | tail_schema
+        self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_offset)].write(new_base_schema)
+
+        self.current_Rid_tail = self.current_Rid_tail - 1
+
     def debugRead(self, index):
-        offSet = (int)(index // (PAGESIZE/DATASIZE))*(4+self.num_columns)
-        newIndex = (int)(index % (PAGESIZE/DATASIZE))
+        offSet = (int)(index // (PAGESIZE/DATASIZE))*(4+self.num_columns) # offset is page index
+        newIndex = (int)(index % (PAGESIZE/DATASIZE)) # newIndex is record index
         for x in range(4 + self.num_columns):
             print(self.page_directory[(0,x+offSet)].read(newIndex))
             print(int.from_bytes(self.page_directory[(0,x+offSet)].read(newIndex), byteorder = "big"), end =" ")
@@ -71,4 +106,3 @@ class Table:
 
     def __merge(self):
         pass
- 
