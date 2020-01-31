@@ -4,11 +4,12 @@ from index import Index
 
 class Query:
     """
-    # Creates a Query object that can perform different queries on the specified table 
+    # Creates a Query object that can perform different queries on the specified table
     """
 
     def __init__(self, table):
         self.table = table
+        self.index = Index(table)
         pass
 
     """
@@ -17,36 +18,52 @@ class Query:
     """
 
     def delete(self, key):
-        pass
+        rid = self.index.locate(key)
+        self.table.delete(rid)
 
     """
     # Insert a record with specified columns
     """
 
     def insert(self, *columns):
-        schema_encoding = '0' * self.table.num_columns
+        schema_encoding = 0
         record = Record(self.table.current_Rid, self.table.key, columns)
         self.table.insert(schema_encoding, record)
 
     """
     # Read a record with specified key
+    :param query_columns: list of bit values, 0 for unselected columns and 1
+        for selected columns
     """
 
     def select(self, key, query_columns):
-        pass
+        rid = self.index.locate(key)
+        return self.table.select(rid, query_columns)
 
     """
     # Update a record with specified key and columns
     """
 
     def update(self, key, *columns):
-        pass
+        schema_encoding = 1 << (self.table.num_columns - 1)
+        for x in columns:
+            if x == None:
+                schema_encoding >>= 1
+            else:
+                break
+        rid = self.index.locate(key)
+        record = Record(rid, self.table.key, columns)
+        self.table.update(schema_encoding, record)
 
     """
-    :param start_range: int         # Start of the key range to aggregate 
-    :param end_range: int           # End of the key range to aggregate 
+    :param start_range: int         # Start of the key range to aggregate
+    :param end_range: int           # End of the key range to aggregate
     :param aggregate_columns: int  # Index of desired column to aggregate
     """
 
     def sum(self, start_range, end_range, aggregate_column_index):
-        pass
+        sum = 0
+        for key in range(end_range - start_range):
+            rid = self.index.locate(key)
+            sum += self.table.select_col_value(rid, aggregate_column_index)
+        return sum
