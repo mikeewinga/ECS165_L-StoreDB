@@ -19,17 +19,24 @@ class Index:
 
     def locate(self, value):
 
-        listOfKeys = []
+        # listOfKeys = []
 
-        #returns an iterable sequence of all key value pairs
-        listOfItems = self.indexDict.items()
+        # #returns an iterable sequence of all key value pairs
+        # listOfItems = self.indexDict.items()
         
-        for item  in listOfItems:
-            valueList = item[1]
-            if value in valueList:
-                listOfKeys.append(item[0])
-        return  listOfKeys
-        #pass
+        # for item  in listOfItems:
+        #     valueList = item[1]
+        #     if value in valueList:
+        #         listOfKeys.append(item[0])
+        # return  listOfKeys
+        # #pass
+
+        intList = []
+        byteList =  self.indexDict[value]
+        for x in byteList:
+            intList.append(int.from_bytes(x,byteorder='big',signed=False))
+        return intList
+
 
     """
     # optional: Create index on specific column
@@ -38,6 +45,9 @@ class Index:
     def create_index(self, table, column_number):
         self.table = table
         self.indexDict = {}
+
+
+        
         keyPage = table.page_directory[(0,4+column_number)]
         ridPage = table.page_directory[(0,1)]
 
