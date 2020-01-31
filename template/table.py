@@ -59,7 +59,15 @@ class Table:
             for x in range(self.num_columns + 4):
                 self.page_directory[(0,x + self.total_columns)] = Page()
             self.total_columns = self.total_columns + self.num_columns + 4
-            
+
+    def return_record(self, rid, col_wanted):
+        record_wanted = []
+        page_offset=(int)(index // (PAGESIZE/DATASIZE))*(4+self.num_columns)
+        rid_offset=(int)(index % (PAGESIZE/DATASIZE))
+        for x in self.num_columns:
+            if(col_wanted[x]==1):
+                record_wanted[x]=int.from_bytes(self.page_directory[(0,4+x+page_offset)].read(rid_offset), byteorder = "big")
+        return record_wanted       
             
     def debugRead(self, index):
         offSet = (int)(index // (PAGESIZE/DATASIZE))*(4+self.num_columns)

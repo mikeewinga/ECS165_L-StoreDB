@@ -38,7 +38,10 @@ class Query:
 
     def select(self, key, query_columns):
         rid = self.index.locate(key)
-        return self.table.select(rid[0], query_columns)
+        record_set = []
+        for x in len(rid):
+            record_set[x]=self.return_record(rid[x], query_columns)
+        return record_set
 
     """
     # Update a record with specified key and columns
