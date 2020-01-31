@@ -14,16 +14,40 @@ class Index:
 
     """
     # returns the location of all records with the given value
+    # i.e. an RID of base page
     """
 
     def locate(self, value):
-        pass
+
+        listOfKeys = []
+
+        #returns an iterable sequence of all key value pairs
+        listOfItems = self.indexDict.items()
+        
+        for item  in listOfItems:
+            valueList = item[1]
+            if value in valueList:
+                listOfKeys.append(item[0])
+        return  listOfKeys
+        #pass
 
     """
     # optional: Create index on specific column
     """
 
     def create_index(self, table, column_number):
+        self.table = table
+        self.indexDict = {}
+        keyPage = table.page_directory[(0,4+column_number)]
+        ridPage = table.page_directory[(0,1)]
+
+        for x in range(0, keyPage.num_records):
+            key = int.from_bytes(keyPage.read(x),byteorder='big',signed=False)
+            F = self.indexDict.get(key)
+            if F != None:
+                F = F.append(ridPage.read(x))
+            else:
+                self.indexDict[key] = [ridPage.read(x)]
         pass
 
     """
