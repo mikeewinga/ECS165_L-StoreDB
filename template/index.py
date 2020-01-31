@@ -1,4 +1,5 @@
 from table import Table
+import math
 
 """
 # optional: Indexes the specified column of the specified table to speed up select queries
@@ -46,18 +47,21 @@ class Index:
         self.table = table
         self.indexDict = {}
 
+        # number of pages needed for index
+        numIndexPages = math.ceil( self.table.current_Rid / (PAGESIZE/DATASIZE) )
 
-        
-        keyPage = table.page_directory[(0,4+column_number)]
-        ridPage = table.page_directory[(0,1)]
+        step = 4 + column_number
+        for i in range(0, numIndexPages+1, step):
+            keyPage = table.page_directory[(0, 4+column_number+i)]
+            ridPage = table.page_directory[(0, 1+i)]
 
-        for x in range(0, keyPage.num_records):
-            key = int.from_bytes(keyPage.read(x),byteorder='big',signed=False)
-            F = self.indexDict.get(key)
-            if F != None:
-                F = F.append(ridPage.read(x))
-            else:
-                self.indexDict[key] = [ridPage.read(x)]
+            for x in range(0, keyPage.num_records):
+                key = int.from_bytes(keyPage.read(x),byteorder='big',signed=False)
+                F = self.indexDict.get(key)
+                if F != None:
+                    F = F.append(ridPage.read(x))
+                else:
+                    self.indexDict[key] = [ridPage.read(x)]
         pass
 
     """
