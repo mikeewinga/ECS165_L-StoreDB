@@ -19,7 +19,7 @@ class Query:
 
     def delete(self, key):
         rid = self.index.locate(key)
-        self.table.delete(rid)
+        self.table.delete(rid[0])
 
     """
     # Insert a record with specified columns
@@ -38,7 +38,7 @@ class Query:
 
     def select(self, key, query_columns):
         rid = self.index.locate(key)
-        return self.table.select(rid, query_columns)
+        return self.table.select(rid[0], query_columns)
 
     """
     # Update a record with specified key and columns
@@ -52,7 +52,7 @@ class Query:
             else:
                 break
         rid = self.index.locate(key)
-        record = Record(rid, self.table.key, columns)
+        record = Record(rid[0], self.table.key, columns)
         self.table.update(schema_encoding, record)
 
     """
@@ -65,5 +65,5 @@ class Query:
         sum = 0
         for key in range(end_range - start_range):
             rid = self.index.locate(key)
-            sum += self.table.select_col_value(rid, aggregate_column_index)
+            sum += self.table.select_col_value(rid[0], aggregate_column_index)
         return sum
