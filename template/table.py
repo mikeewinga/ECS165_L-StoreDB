@@ -14,6 +14,12 @@ class Record:
         self.rid = rid
         self.key = key
         self.columns = columns
+        
+class Directory:
+
+    def __init__(self):
+        self.indexer = {}
+        
 
 class Table:
 
@@ -33,6 +39,8 @@ class Table:
             self.page_directory[(1,x)] = Page()
         self.current_Rid = 0
         pass
+
+    
 
     def insert(self, schema, record):
         offSet = 0;
@@ -62,11 +70,10 @@ class Table:
 
     def return_record(self, rid, col_wanted):
         record_wanted = []
-        page_offset=(int)(index // (PAGESIZE/DATASIZE))*(4+self.num_columns)
-        rid_offset=(int)(index % (PAGESIZE/DATASIZE))
-        for x in self.num_columns:
-            if(col_wanted[x]==1):
-                record_wanted[x]=int.from_bytes(self.page_directory[(0,4+x+page_offset)].read(rid_offset), byteorder = "big")
+        page_offset=(int)(rid // (PAGESIZE/DATASIZE))*(4+self.num_columns)
+        rid_offset=(int)(rid % (PAGESIZE/DATASIZE))
+        for x in range(0, self.num_columns):
+            if(col_wanted[x]==1):                record_wanted.append(int.from_bytes(self.page_directory[(0,4+x+page_offset)].read(rid_offset), byteorder = "big"))
         return record_wanted       
             
     def debugRead(self, index):

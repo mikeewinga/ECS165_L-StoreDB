@@ -10,6 +10,7 @@ class Query:
     def __init__(self, table):
         self.table = table
         self.index = Index(table)
+        self.hasIndex = 0
         pass
 
     """
@@ -37,10 +38,15 @@ class Query:
     """
 
     def select(self, key, query_columns):
+        if (self.hasIndex == 0) :
+            self.index.create_index(self.index.table,0)
+            self.hasIndex = 1
+        #for key, value in self.index.indexDict.items():
+        #    print(key, value)
         rid = self.index.locate(key)
         record_set = []
-        for x in len(rid):
-            record_set[x]=self.return_record(rid[x], query_columns)
+        for x in range(0,len(rid)):
+            record_set.append(self.table.return_record(rid[0], query_columns))
         return record_set
 
     """

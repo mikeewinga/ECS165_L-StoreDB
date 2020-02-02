@@ -1,5 +1,6 @@
 from table import Table
 import math
+from config import *
 
 """
 # optional: Indexes the specified column of the specified table to speed up select queries
@@ -11,6 +12,7 @@ class Index:
 
     def __init__(self, table):
         self.table = table
+        self.indexDict = {}
         pass
 
     """
@@ -45,18 +47,17 @@ class Index:
 
     def create_index(self, table, column_number):
         self.table = table
-        self.indexDict = {}
 
         # number of pages needed for index
         numIndexPages = math.ceil( self.table.current_Rid / (PAGESIZE/DATASIZE) )
 
-        step = 4 + column_number
-        for i in range(0, numIndexPages+1, step):
-            keyPage = table.page_directory[(0, 4+column_number+i)]
-            ridPage = table.page_directory[(0, 1+i)]
-
+        step = 4 + table.num_columns
+        for i in range(0, numIndexPages):
+            keyPage = table.page_directory[(0, 4+column_number+(i*step))]
+            ridPage = table.page_directory[(0, 1+(i*step))]
             for x in range(0, keyPage.num_records):
                 key = int.from_bytes(keyPage.read(x),byteorder='big',signed=False)
+                #print(key)
                 F = self.indexDict.get(key)
                 if F != None:
                     F = F.append(ridPage.read(x))
