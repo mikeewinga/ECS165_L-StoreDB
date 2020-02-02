@@ -38,7 +38,7 @@ class Table:
             self.page_directory[(0,x)] = Page()
             self.page_directory[(1,x)] = Page()
         self.current_Rid_base = 0
-        self.current_Rid_tail = 2**64
+        self.current_Rid_tail = 2**64 - 1
         pass
 
     def get_timestamp(self):
@@ -90,7 +90,7 @@ class Table:
             offSet = offSet + self.num_columns + 4
         self.page_directory[(1,INDIRECTION_COLUMN+offSet)].write(prev_update_rid) # set indir to previous update rid
         self.page_directory[(1,RID_COLUMN+offSet)].write(self.current_Rid_tail) # set the rid of tail page
-        data = get_timestamp()
+        data = self.get_timestamp()
         self.page_directory[(1,TIMESTAMP_COLUMN+offSet)].write(data) # set the timestamp
         self.page_directory[(1,SCHEMA_ENCODING_COLUMN+offSet)].write(tail_schema) # set the schema encoding
         for x in range(self.num_columns): # copy in record data

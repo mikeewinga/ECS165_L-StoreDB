@@ -54,6 +54,9 @@ class Query:
     """
 
     def update(self, key, *columns):
+        if (self.hasIndex == 0) :
+            self.index.create_index(self.index.table,0)
+            self.hasIndex = 1
         schema_encoding = 1 << (self.table.num_columns - 1)
         for x in columns:
             if x == None:
@@ -62,7 +65,7 @@ class Query:
                 break
         rid = self.index.locate(key)
         record = Record(0, self.table.key, columns)
-        self.table.update(rid, schema_encoding, record)
+        self.table.update(rid[0], schema_encoding, record)
 
     """
     :param start_range: int         # Start of the key range to aggregate
