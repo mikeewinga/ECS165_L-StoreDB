@@ -26,7 +26,7 @@ class Index:
 
         # #returns an iterable sequence of all key value pairs
         # listOfItems = self.indexDict.items()
-        
+
         # for item  in listOfItems:
         #     valueList = item[1]
         #     if value in valueList:
@@ -49,7 +49,7 @@ class Index:
         self.table = table
 
         # number of pages needed for index
-        numIndexPages = math.ceil( self.table.current_Rid / (PAGESIZE/DATASIZE) )
+        numIndexPages = math.ceil( self.table.current_Rid_base / (PAGESIZE/DATASIZE) )
 
         step = 4 + table.num_columns
         for i in range(0, numIndexPages):
