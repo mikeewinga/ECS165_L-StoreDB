@@ -76,7 +76,8 @@ class Table:
         page_offset=(int)(rid // (PAGESIZE/DATASIZE))*(4+self.num_columns)
         rid_offset=(int)(rid % (PAGESIZE/DATASIZE))
         for x in range(0, self.num_columns):
-            if(col_wanted[x]==1):                record_wanted.append(int.from_bytes(self.page_directory[(0,4+x+page_offset)].read(rid_offset), byteorder = "big"))
+            if(col_wanted[x]==1):
+                record_wanted.append(int.from_bytes(self.page_directory[(0,4+x+page_offset)].read(rid_offset), byteorder = "big"))
         return record_wanted
 
     def update(self, base_rid, tail_schema, record):
@@ -105,6 +106,7 @@ class Table:
         self.page_directory[(0,INDIRECTION_COLUMN+base_page_index)].write(self.current_Rid_tail)
         # change schema of base record
         cur_base_schema = self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_page_index)].read(record_offset)
+        cur_base_schema = int.from_bytes(cur_base_schema,byteorder='big',signed=False)
         new_base_schema = cur_base_schema | tail_schema
         self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_page_index)].write(new_base_schema)
 

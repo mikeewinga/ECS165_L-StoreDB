@@ -15,6 +15,8 @@ class Page:
                 insert = bytes(value, 'utf-8')
             elif (isinstance(value, int)):
                 insert = value.to_bytes(8,byteorder = "big")
+            elif (value == None):
+                insert = bytearray(8)
             else:
                 insert = bytes(value)
             pos = self.num_records * DATASIZE
@@ -22,11 +24,10 @@ class Page:
             self.num_records += 1
             return True
         return False
-        
+
     def read(self, index):
         if (index < PAGESIZE/DATASIZE):
             pos = index * DATASIZE
             value = self.data[pos:pos+(DATASIZE)]
             return value
             #print("".join("\\x%02x" % i for i in value))
-
