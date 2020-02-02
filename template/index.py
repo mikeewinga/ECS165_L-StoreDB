@@ -11,6 +11,7 @@ class Index:
 
     def __init__(self, table):
         self.table = table
+        self.indexDict = {}
         pass
 
     """
@@ -24,7 +25,7 @@ class Index:
 
         # #returns an iterable sequence of all key value pairs
         # listOfItems = self.indexDict.items()
-        
+
         # for item  in listOfItems:
         #     valueList = item[1]
         #     if value in valueList:

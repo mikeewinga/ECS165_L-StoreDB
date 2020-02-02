@@ -27,7 +27,7 @@ class Query:
 
     def insert(self, *columns):
         schema_encoding = 0
-        record = Record(self.table.current_Rid, self.table.key, columns)
+        record = Record(self.table.current_Rid_base, self.table.key, columns)
         self.table.insert(schema_encoding, record)
 
     """
