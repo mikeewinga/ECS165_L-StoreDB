@@ -71,8 +71,16 @@ class Query:
     """
 
     def sum(self, start_range, end_range, aggregate_column_index):
+        if (self.hasIndex == 0) :
+            self.index.create_index(self.index.table,0)
+            self.hasIndex = 1
         sum = 0
-        for key in range(end_range - start_range):
-            rid = self.index.locate(key)
-            sum += self.table.select_col_value(rid[0], aggregate_column_index)
+        column_agg =[]
+        for x in range(0,self.table.num_columns):
+            if(x == aggregate_column_index):
+                column_agg.append(1)
+            else:
+                column_agg.append(0)
+        for n in range(start_range, (start_range+end_range)):
+            sum += self.table.return_record(n, column_agg)[0]
         return sum
