@@ -33,7 +33,8 @@ class Table:
         self.name = name
         self.key = key
         self.num_columns = num_columns
-        self.total_columns = num_columns + 4
+        self.total_base_phys_pages = num_columns + 4
+        self.total_tail_phys_pages = num_columns + 4
         self.page_directory = {}
         for x in range((self.num_columns + 4)):
             self.page_directory[(0,x)] = Page()
@@ -72,8 +73,8 @@ class Table:
             self.page_directory[(0,x + 4+offSet)].write(record.columns[x])
         if not self.page_directory[(0,offSet)].has_capacity():
             for x in range(self.num_columns + 4):
-                self.page_directory[(0,x + self.total_columns)] = Page()
-            self.total_columns = self.total_columns + self.num_columns + 4
+                self.page_directory[(0,x + self.total_base_phys_pages)] = Page()
+            self.total_base_phys_pages = self.total_base_phys_pages + self.num_columns + 4
 
     def return_record(self, rid, col_wanted):
         record_wanted = []
@@ -98,23 +99,23 @@ class Table:
         self.page_directory[(1,INDIRECTION_COLUMN+offSet)].write(prev_update_rid) # set indir to previous update rid
         self.page_directory[(1,RID_COLUMN+offSet)].write(self.current_Rid_tail) # set the rid of tail page
         data = self.get_timestamp()
-        self.page_directory[(1,TIMESTAMP_COLUMN+offSet)].write(data) # set the timestamp
+        self.page_directory[(1,TIMESTAMP_COLUMN+offSet)].overwrite_record(record_offset, data) # set the timestamp
         self.page_directory[(1,SCHEMA_ENCODING_COLUMN+offSet)].write(tail_schema) # set the schema encoding
         for x in range(self.num_columns): # copy in record data
             self.page_directory[(1,x + 4+offSet)].write(record.columns[x])
         #expand the tail page if needed
         if not self.page_directory[(1,offSet)].has_capacity():
             for x in range(self.num_columns + 4):
-                self.page_directory[(1,x + self.total_columns)] = Page()
-            #self.total_columns = self.total_columns + self.num_columns + 4
+                self.page_directory[(1,x + self.total_tail_phys_pages)] = Page()
+            self.total_tail_phys_pages = self.total_tail_phys_pages + self.num_columns + 4
 
         # set base record indirection to rid of new tail record
-        self.page_directory[(0,INDIRECTION_COLUMN+base_page_index)].write(self.current_Rid_tail)
+        self.page_directory[(0,INDIRECTION_COLUMN+base_page_index)].overwrite_record(record_offset, self.current_Rid_tail) # FIXME the write function doesn't seem to actually update base page
         # change schema of base record
         cur_base_schema = self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_page_index)].read(record_offset)
         cur_base_schema = int.from_bytes(cur_base_schema,byteorder='big',signed=False)
         new_base_schema = cur_base_schema | tail_schema
-        self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_page_index)].write(new_base_schema)
+        self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_page_index)].overwrite_record(record_offset, new_base_schema) # FIXME the write function doesn't seem to actually update base page
 
         self.current_Rid_tail = self.current_Rid_tail - 1
 
@@ -124,6 +125,14 @@ class Table:
         for x in range(4 + self.num_columns):
             print(self.page_directory[(0,x+offSet)].read(newIndex))
             print(int.from_bytes(self.page_directory[(0,x+offSet)].read(newIndex), byteorder = "big"), end =" ")
+        print()
+
+    def debugReadTail(self, index):
+        offSet = (int)(index // (PAGESIZE/DATASIZE))*(4+self.num_columns) # offset is page index
+        newIndex = (int)(index % (PAGESIZE/DATASIZE)) # newIndex is record index
+        for x in range(4 + self.num_columns):
+            print(self.page_directory[(1,x+offSet)].read(newIndex))
+            print(int.from_bytes(self.page_directory[(1,x+offSet)].read(newIndex), byteorder = "big"), end =" ")
         print()
 
     def __merge(self):
