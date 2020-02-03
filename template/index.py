@@ -65,6 +65,11 @@ class Index:
                     self.indexDict[key] = [ridPage.read(x)]
         pass
 
+    """
+    indexDict formatted as:
+    RID: [(base/tail, page_num), row_num ]
+    -- base=0 tail=1
+    """
 
     def write(self, RID, value):
         self.indexDict[RID] = value
