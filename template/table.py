@@ -1,5 +1,6 @@
 from page import *
 from time import time
+from index import Index
 import datetime
 
 INDIRECTION_COLUMN = 0
@@ -39,6 +40,7 @@ class Table:
             self.page_directory[(1,x)] = Page()
         self.current_Rid_base = 0
         self.current_Rid_tail = 2**64 - 1
+        self.index = Index(self)
         pass
 
     def get_timestamp(self):
@@ -56,13 +58,15 @@ class Table:
         offSet = 0;
         while not self.page_directory[(0,offSet)].has_capacity():
             offSet = offSet + self.num_columns + 4
+        self.current_Rid_base = self.current_Rid_base + 1
+        self.index.write(self.current_Rid_base, [(0,offSet),
+            self.page_directory[(0,RID_COLUMN+offSet)].num_records])
         self.page_directory[(0,INDIRECTION_COLUMN+offSet)].write(0)
         self.page_directory[(0,RID_COLUMN+offSet)].write(self.current_Rid_base)
         data = self.get_timestamp()
         #print(''.join(format(x, '02x') for x in data))
         self.page_directory[(0,TIMESTAMP_COLUMN+offSet)].write(data)
         self.page_directory[(0,SCHEMA_ENCODING_COLUMN+offSet)].write(schema)
-        self.current_Rid_base = self.current_Rid_base + 1
         #print(self.current_Rid_base)
         for x in range(self.num_columns):
             self.page_directory[(0,x + 4+offSet)].write(record.columns[x])
@@ -73,11 +77,13 @@ class Table:
 
     def return_record(self, rid, col_wanted):
         record_wanted = []
-        page_offset=(int)(rid // (PAGESIZE/DATASIZE))*(4+self.num_columns)
-        rid_offset=(int)(rid % (PAGESIZE/DATASIZE))
+        page_Index = self.index.read(rid)
+        page_offset = page_Index[0]
+        #page_offset=(int)(rid // (PAGESIZE/DATASIZE))*(4+self.num_columns)
+        #rid_offset=(int)(rid % (PAGESIZE/DATASIZE))
         for x in range(0, self.num_columns):
             if(col_wanted[x]==1):
-                record_wanted.append(int.from_bytes(self.page_directory[(0,4+x+page_offset)].read(rid_offset), byteorder = "big"))
+                record_wanted.append(int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+x+4)].read(page_Index[1]), byteorder = "big"))
         return record_wanted
 
     def update(self, base_rid, tail_schema, record):

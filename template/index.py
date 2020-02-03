@@ -1,4 +1,4 @@
-from table import Table
+import table
 import math
 from config import *
 
@@ -64,6 +64,13 @@ class Index:
                 else:
                     self.indexDict[key] = [ridPage.read(x)]
         pass
+
+
+    def write(self, RID, value):
+        self.indexDict[RID] = value
+
+    def read(self, RID):
+        return self.indexDict[RID]
 
     """
     # optional: Drop index of specific column
