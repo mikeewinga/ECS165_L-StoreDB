@@ -30,6 +30,7 @@ class Query:
         schema_encoding = 0
         record = Record(self.table.current_Rid_base, self.table.key, columns)
         self.table.insert(schema_encoding, record)
+        print(record)
 
     """
     # Read a record with specified key
