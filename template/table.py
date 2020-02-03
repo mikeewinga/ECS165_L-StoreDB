@@ -97,6 +97,8 @@ class Table:
         while not self.page_directory[(1,offSet)].has_capacity(): # finds the empty offset to insert new record at
             offSet = offSet + self.num_columns + 4
         self.page_directory[(1,INDIRECTION_COLUMN+offSet)].write(prev_update_rid) # set indir to previous update rid
+        self.index.write(self.current_Rid_tail, [(1,offSet),
+        self.page_directory[(1,RID_COLUMN+offSet)].num_records])
         self.page_directory[(1,RID_COLUMN+offSet)].write(self.current_Rid_tail) # set the rid of tail page
         data = self.get_timestamp()
         self.page_directory[(1,TIMESTAMP_COLUMN+offSet)].overwrite_record(record_offset, data) # set the timestamp
@@ -110,7 +112,7 @@ class Table:
             self.total_tail_phys_pages = self.total_tail_phys_pages + self.num_columns + 4
 
         # set base record indirection to rid of new tail record
-        self.page_directory[(0,INDIRECTION_COLUMN+base_page_index)].overwrite_record(record_offset, self.current_Rid_tail) # FIXME the write function doesn't seem to actually update base page
+        self.page_directory[(0,INDIRECTION_COLUMN+base_page_index)].overwrite_record(record_offset, self.current_Rid_tail)
         # change schema of base record
         cur_base_schema = self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_page_index)].read(record_offset)
         cur_base_schema = int.from_bytes(cur_base_schema,byteorder='big',signed=False)
@@ -131,7 +133,7 @@ class Table:
         offSet = (int)(index // (PAGESIZE/DATASIZE))*(4+self.num_columns) # offset is page index
         newIndex = (int)(index % (PAGESIZE/DATASIZE)) # newIndex is record index
         for x in range(4 + self.num_columns):
-            print(self.page_directory[(1,x+offSet)].read(newIndex))
+            print(hex(self.page_directory[(1,x+offSet)].read(newIndex)))
             print(int.from_bytes(self.page_directory[(1,x+offSet)].read(newIndex), byteorder = "big"), end =" ")
         print()
 
