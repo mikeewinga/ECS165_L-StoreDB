@@ -121,5 +121,13 @@ class Table:
             print(int.from_bytes(self.page_directory[(0,x+offSet)].read(newIndex), byteorder = "big"), end =" ")
         print()
 
+    def debugReadTail(self, index):
+        offSet = (int)(index // (PAGESIZE/DATASIZE))*(4+self.num_columns) # offset is page index
+        newIndex = (int)(index % (PAGESIZE/DATASIZE)) # newIndex is record index
+        for x in range(4 + self.num_columns):
+            print(self.page_directory[(1,x+offSet)].read(newIndex))
+            print(int.from_bytes(self.page_directory[(1,x+offSet)].read(newIndex), byteorder = "big"), end =" ")
+        print()
+
     def __merge(self):
         pass
