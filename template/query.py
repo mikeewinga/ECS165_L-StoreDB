@@ -48,6 +48,7 @@ class Query:
         record_set = []
         for x in range(0,len(rid)):
             record_set.append(self.table.return_record(rid[0], query_columns))
+        print(record_set)
         return record_set
 
     """
