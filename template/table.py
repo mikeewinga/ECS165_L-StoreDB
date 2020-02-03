@@ -117,7 +117,7 @@ class Table:
         cur_base_schema = self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_page_index)].read(record_offset)
         cur_base_schema = int.from_bytes(cur_base_schema,byteorder='big',signed=False)
         new_base_schema = cur_base_schema | tail_schema
-        self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_page_index)].overwrite_record(record_offset, new_base_schema) # FIXME the write function doesn't seem to actually update base page
+        self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_page_index)].overwrite_record(record_offset, new_base_schema)
 
         self.current_Rid_tail = self.current_Rid_tail - 1
 
