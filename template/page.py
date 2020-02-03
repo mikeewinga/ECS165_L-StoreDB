@@ -22,7 +22,7 @@ class Page:
 
     def write(self, value):
         if (self.has_capacity()):
-            insert = convert_to_bytes(value)
+            insert = self.convert_to_bytes(value)
             pos = self.num_records * DATASIZE
             self.data[pos:pos+len(insert)] = insert
             self.num_records += 1
@@ -31,7 +31,7 @@ class Page:
 
     def overwrite_record(self, record_index, value):
         if (record_index < PAGESIZE/DATASIZE):
-            insert = convert_to_bytes(value)
+            insert = self.convert_to_bytes(value)
             pos = record_index * DATASIZE
             self.data[pos:pos+(DATASIZE)] = insert
             return True

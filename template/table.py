@@ -82,7 +82,6 @@ class Table:
         return record_wanted
 
     def update(self, base_rid, tail_schema, record):
-        #FIXME need to replace all the write() functions here with new func that takes in record_offset
         base_page_index = (int)(base_rid // (PAGESIZE/DATASIZE))*(4+self.num_columns)
         record_offset = (int)(base_rid % (PAGESIZE/DATASIZE))
         prev_update_rid = self.page_directory[(0,INDIRECTION_COLUMN+base_page_index)].read(record_offset)
@@ -94,7 +93,7 @@ class Table:
         self.page_directory[(1,INDIRECTION_COLUMN+offSet)].write(prev_update_rid) # set indir to previous update rid
         self.page_directory[(1,RID_COLUMN+offSet)].write(self.current_Rid_tail) # set the rid of tail page
         data = self.get_timestamp()
-        self.page_directory[(1,TIMESTAMP_COLUMN+offSet)].write(data) # set the timestamp
+        self.page_directory[(1,TIMESTAMP_COLUMN+offSet)].overwrite_record(record_offset, data) # set the timestamp
         self.page_directory[(1,SCHEMA_ENCODING_COLUMN+offSet)].write(tail_schema) # set the schema encoding
         for x in range(self.num_columns): # copy in record data
             self.page_directory[(1,x + 4+offSet)].write(record.columns[x])
@@ -105,12 +104,12 @@ class Table:
             self.total_tail_phys_pages = self.total_tail_phys_pages + self.num_columns + 4
 
         # set base record indirection to rid of new tail record
-        self.page_directory[(0,INDIRECTION_COLUMN+base_page_index)].write(self.current_Rid_tail) # FIXME the write function doesn't seem to actually update base page
+        self.page_directory[(0,INDIRECTION_COLUMN+base_page_index)].overwrite_record(record_offset, self.current_Rid_tail) # FIXME the write function doesn't seem to actually update base page
         # change schema of base record
         cur_base_schema = self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_page_index)].read(record_offset)
         cur_base_schema = int.from_bytes(cur_base_schema,byteorder='big',signed=False)
         new_base_schema = cur_base_schema | tail_schema
-        self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_page_index)].write(new_base_schema) # FIXME the write function doesn't seem to actually update base page
+        self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_page_index)].overwrite_record(record_offset, new_base_schema) # FIXME the write function doesn't seem to actually update base page
 
         self.current_Rid_tail = self.current_Rid_tail - 1
 
