@@ -10,6 +10,11 @@ from lstore.config import *
 
 class Index:
 
+    """
+    indexDict as index: {key : RID}
+    indexDict as page directory: {RID : [(base/tail, page_num), record_offset]}
+    -- base=0 tail=1
+    """
     def __init__(self, table):
         self.table = table
         self.indexDict = {}
@@ -18,6 +23,8 @@ class Index:
     """
     # returns the location of all records with the given value
     # i.e. an RID of base page
+    :param value: user-given key
+    :return: list of RID's
     """
 
     def locate(self, value):
@@ -34,9 +41,10 @@ class Index:
         # return  listOfKeys
         # #pass
 
-        intList = []
-        if self.indexDict.get(value):
+        intList = [] # saves the RID's of matching records
+        if self.indexDict.get(value):  # check if given key exists in indexDict
             byteList =  self.indexDict[value]
+            # convert byte format to RID numbers
             for x in byteList:
                 intList.append(int.from_bytes(x,byteorder='big',signed=False))
         return intList
@@ -44,6 +52,7 @@ class Index:
 
     """
     # optional: Create index on specific column
+    :param column_number: int
     """
 
     def create_index(self, table, column_number):
@@ -67,13 +76,17 @@ class Index:
         pass
 
     """
-    indexDict formatted as:
-    RID: [(base/tail, page_num), row_num ]
-    -- base=0 tail=1
+    # add key-value pair mapping RID to page + offset
+    :param value: {RID : [(base/tail, page_num), record_offset]}
     """
 
     def write(self, RID, value):
         self.indexDict[RID] = value
+
+    """
+    # find page + offset of given RID
+    :return: {RID : [(base/tail, page_num), record_offset]}
+    """
 
     def read(self, RID):
         return self.indexDict[RID]
