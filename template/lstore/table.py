@@ -85,6 +85,11 @@ class Table:
                 self.page_directory[(0,x + self.total_base_phys_pages)] = Page()
             self.total_base_phys_pages = self.total_base_phys_pages + self.num_columns + 4
 
+    """
+    Converts the schema bit string to column offset
+    :param schema: integer bit string
+    :return: index position of 1 bit counting from left
+    """
     def getOffset(self, schema):
         offset = 0
         if (not (schema - 16)):
@@ -105,23 +110,31 @@ class Table:
         page_Index = self.index.read(rid)
         page_offset = page_Index[0]
         update_F = [1] * len(col_wanted)
+        # saves indirection column of base page in next
         next = self.page_directory[page_Index[0]].read(page_Index[1])
         #print(next)
         next = int.from_bytes(next, byteorder = "big")
         #print(self.index.read(next))
+        # goes through each column and if user wants to read the column,
+        #    appends user-requested data
         for x in range(0, self.num_columns):
             if(col_wanted[x]==1):
                 record_wanted.append(int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+x+4)].read(page_Index[1]), byteorder = "big"))
             else:
                 record_wanted.append(0)
-        while next:
+        # follow indirection column to updated tail records
+        while next: # if next != 0, must follow tail records
+            # get page number and offset of tail record
             page_Index = self.index.read(next)
             page_offset = page_Index[0]
-            schema = self.page_directory[(page_offset[0], page_offset[1]+3)].read(page_Index[1])
+            # get schema column of tail record
+            schema = self.page_directory[(page_offset[0], page_offset[1]+SCHEMA_ENCODING_COLUMN)].read(page_Index[1])
             schema = int.from_bytes(schema, byteorder = "big")
             schema = self.getOffset(schema)
             #print(schema)
+            # read the updated column and overwrite corresponding value in record_wanted
             record_wanted[schema] = int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+4+schema)].read(page_Index[1]), byteorder = "big")
+            # get next RID from indirection column
             next = self.page_directory[page_Index[0]].read(page_Index[1])
             next = int.from_bytes(next, byteorder = "big")
         return record_wanted
@@ -132,18 +145,24 @@ class Table:
         record_offset = page_Index[1]
         prev_update_rid = self.page_directory[(0,INDIRECTION_COLUMN+base_page_index)].read(record_offset)
         #print(prev_update_rid)
-        #add new tail record
+        # add new tail record
+        # find the empty offset to insert new record at
         offSet = 0;
-        while not self.page_directory[(1,offSet)].has_capacity(): # finds the empty offset to insert new record at
+        while not self.page_directory[(1,offSet)].has_capacity():
             offSet = offSet + self.num_columns + 4
-        self.page_directory[(1,INDIRECTION_COLUMN+offSet)].write(prev_update_rid) # set indir to previous update rid
+        # set indirection column of tail record to previous update RID
+        self.page_directory[(1,INDIRECTION_COLUMN+offSet)].write(prev_update_rid)
+        # update the index page directory with tail record
         self.index.write(self.current_Rid_tail, [(1,offSet),
-        self.page_directory[(1,RID_COLUMN+offSet)].num_records])
-        self.page_directory[(1,RID_COLUMN+offSet)].write(self.current_Rid_tail) # set the rid of tail page
+            self.page_directory[(1,RID_COLUMN+offSet)].num_records])
+        # set the RID of tail record
+        self.page_directory[(1,RID_COLUMN+offSet)].write(self.current_Rid_tail)
+        # set the timestamp and schema encoding
         data = self.get_timestamp()
-        self.page_directory[(1,TIMESTAMP_COLUMN+offSet)].overwrite_record(record_offset, data) # set the timestamp
-        self.page_directory[(1,SCHEMA_ENCODING_COLUMN+offSet)].write(tail_schema) # set the schema encoding
-        for x in range(self.num_columns): # copy in record data
+        self.page_directory[(1,TIMESTAMP_COLUMN+offSet)].overwrite_record(record_offset, data)
+        self.page_directory[(1,SCHEMA_ENCODING_COLUMN+offSet)].write(tail_schema)
+        # copy in record data
+        for x in range(self.num_columns):
             self.page_directory[(1,x + 4+offSet)].write(record.columns[x])
         #expand the tail page if needed
         if not self.page_directory[(1,offSet)].has_capacity():
