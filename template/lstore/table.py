@@ -159,7 +159,7 @@ class Table:
         self.page_directory[(1,RID_COLUMN+offSet)].write(self.current_Rid_tail)
         # set the timestamp and schema encoding
         data = self.get_timestamp()
-        self.page_directory[(1,TIMESTAMP_COLUMN+offSet)].overwrite_record(record_offset, data)
+        self.page_directory[(1,TIMESTAMP_COLUMN+offSet)].write(data)
         self.page_directory[(1,SCHEMA_ENCODING_COLUMN+offSet)].write(tail_schema)
         # copy in record data
         for x in range(self.num_columns):
