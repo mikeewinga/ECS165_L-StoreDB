@@ -26,7 +26,6 @@ class Query:
         schema_encoding = 0  # schema is 0 since no columns are updated yet
         record = Record(self.table.current_Rid_base, self.table.key, columns)
         self.table.insert(schema_encoding, record)
-        #print(record)
 
     """
     # Read columns from a record with specified key
@@ -40,14 +39,11 @@ class Query:
         if (self.hasIndex == 0) :
             self.index.create_index(self.index.table,0)
             self.hasIndex = 1
-        #for key, value in self.index.indexDict.items():
-        #    print(key, value)
         rid = self.index.locate(key)
         record_set = []
         for x in range(0,len(rid)):
             record_set.append(Record(rid, key,
             self.table.return_record(rid[0], query_columns)))
-        #print(record_set)
         return record_set
 
     """

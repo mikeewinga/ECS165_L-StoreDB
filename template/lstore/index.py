@@ -28,19 +28,6 @@ class Index:
     """
 
     def locate(self, value):
-
-        # listOfKeys = []
-
-        # #returns an iterable sequence of all key value pairs
-        # listOfItems = self.indexDict.items()
-
-        # for item  in listOfItems:
-        #     valueList = item[1]
-        #     if value in valueList:
-        #         listOfKeys.append(item[0])
-        # return  listOfKeys
-        # #pass
-
         intList = [] # saves the RID's of matching records
         if self.indexDict.get(value):  # check if given key exists in indexDict
             byteList =  self.indexDict[value]
@@ -67,7 +54,6 @@ class Index:
             ridPage = table.page_directory[(0, 1+(i*step))]
             for x in range(0, keyPage.num_records):
                 key = int.from_bytes(keyPage.read(x),byteorder='big',signed=False)
-                #print(key)
                 F = self.indexDict.get(key)
                 if F != None:
                     F = F.append(ridPage.read(x))
