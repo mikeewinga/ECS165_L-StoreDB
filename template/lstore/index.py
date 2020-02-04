@@ -35,9 +35,10 @@ class Index:
         # #pass
 
         intList = []
-        byteList =  self.indexDict[value]
-        for x in byteList:
-            intList.append(int.from_bytes(x,byteorder='big',signed=False))
+        if self.indexDict.get(value):
+            byteList =  self.indexDict[value]
+            for x in byteList:
+                intList.append(int.from_bytes(x,byteorder='big',signed=False))
         return intList
 
 

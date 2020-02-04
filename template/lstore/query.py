@@ -87,6 +87,8 @@ class Query:
                 column_agg.append(1)
             else:
                 column_agg.append(0)
-        for n in range(start_range+1, (start_range+end_range+1)):
-            sum += self.table.return_record(n, column_agg)[0]
+        for n in range(start_range, (end_range)):
+            RID = self.index.locate(n)
+            for cur in RID:
+                sum += self.table.return_record(cur, column_agg)[0]
         return sum
