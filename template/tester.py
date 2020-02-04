@@ -33,7 +33,7 @@ for key in records:
         print('select error on', key , ':', record, ', correct:', records[key])
     else:
         print('select on', key, ':', record)
-"""
+
 for key in records:
     updated_columns = [None, None, None, None, None]
     for i in range(1, grades_table.num_columns):
@@ -52,12 +52,11 @@ for key in records:
         else:
             print('update on', original, 'and', updated_columns, ':', record)
         updated_columns[i] = None
-"""
+
 keys = sorted(list(records.keys()))
 for c in range(0, grades_table.num_columns):
     for i in range(0, 20):
         r = sorted(sample(range(0, len(keys)), 2))
-        print(r)
         column_sum = sum(map(lambda key: records[key][c], keys[r[0]: r[1] + 1]))
         result = query.sum(keys[r[0]], keys[r[1]], c)
         if column_sum != result:
