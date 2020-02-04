@@ -48,7 +48,7 @@ class Table:
         for x in range((self.num_columns + 4)):
             self.page_directory[(0,x)] = Page()
             self.page_directory[(1,x)] = Page()
-        self.current_Rid_base = 0
+        self.current_Rid_base = 1
         self.current_Rid_tail = 2**64 - 1
         self.index = Index(self)
         pass
@@ -68,7 +68,6 @@ class Table:
         offSet = 0;
         while not self.page_directory[(0,offSet)].has_capacity():
             offSet = offSet + self.num_columns + 4
-        self.current_Rid_base = self.current_Rid_base + 1
         self.index.write(self.current_Rid_base, [(0,offSet),
             self.page_directory[(0,RID_COLUMN+offSet)].num_records])
         self.page_directory[(0,INDIRECTION_COLUMN+offSet)].write(0)
@@ -84,6 +83,8 @@ class Table:
             for x in range(self.num_columns + 4):
                 self.page_directory[(0,x + self.total_base_phys_pages)] = Page()
             self.total_base_phys_pages = self.total_base_phys_pages + self.num_columns + 4
+        self.current_Rid_base = self.current_Rid_base + 1
+
 
     """
     Converts the schema bit string to column offset
