@@ -52,6 +52,19 @@ for key in records:
         else:
             print('update on', original, 'and', updated_columns, ':', record)
         updated_columns[i] = None
+
+for key in records:
+    record = query.select(key, [1, 1, 1, 1, 1])[0]
+    error = False
+    for i, column in enumerate(record.columns):
+        if column != records[key][i]:
+            error = True
+    if error:
+        print('select error on', key , ':', record, ', correct:', records[key])
+    else:
+        print('select on', key, ':', record)
+
+
 """
 keys = sorted(list(records.keys()))
 for c in range(0, grades_table.num_columns):
