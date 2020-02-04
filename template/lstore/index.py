@@ -89,7 +89,9 @@ class Index:
     """
 
     def read(self, RID):
-        return self.indexDict[RID]
+        if self.indexDict.get(RID):
+            return self.indexDict[RID]
+        return 0
 
     """
     # optional: Drop index of specific column

@@ -85,22 +85,53 @@ class Table:
                 self.page_directory[(0,x + self.total_base_phys_pages)] = Page()
             self.total_base_phys_pages = self.total_base_phys_pages + self.num_columns + 4
 
+    def getOffset(self, schema):
+        offset = 0
+        if (not (schema - 16)):
+            offset += 0
+        elif (not (schema - 8)):
+            offset += 1
+        elif (not (schema - 4)):
+            offset += 2
+        elif (not (schema - 2)):
+            offset += 3
+        elif not ((schema - 1)):
+            offset += 4
+        return offset
+
     def return_record(self, rid, col_wanted):
         record_wanted = []
+        #print(rid)
         page_Index = self.index.read(rid)
         page_offset = page_Index[0]
-        #page_offset=(int)(rid // (PAGESIZE/DATASIZE))*(4+self.num_columns)
-        #rid_offset=(int)(rid % (PAGESIZE/DATASIZE))
+        update_F = [1] * len(col_wanted)
+        next = self.page_directory[page_Index[0]].read(page_Index[1])
+        #print(next)
+        next = int.from_bytes(next, byteorder = "big")
+        #print(self.index.read(next))
         for x in range(0, self.num_columns):
             if(col_wanted[x]==1):
                 record_wanted.append(int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+x+4)].read(page_Index[1]), byteorder = "big"))
+            else:
+                record_wanted.append(0)
+        while next:
+            page_Index = self.index.read(next)
+            page_offset = page_Index[0]
+            schema = self.page_directory[(page_offset[0], page_offset[1]+3)].read(page_Index[1])
+            schema = int.from_bytes(schema, byteorder = "big")
+            schema = self.getOffset(schema)
+            #print(schema)
+            record_wanted[schema] = int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+4+schema)].read(page_Index[1]), byteorder = "big")
+            next = self.page_directory[page_Index[0]].read(page_Index[1])
+            next = int.from_bytes(next, byteorder = "big")
         return record_wanted
 
     def update(self, base_rid, tail_schema, record):
-        base_page_index = (int)(base_rid // (PAGESIZE/DATASIZE))*(4+self.num_columns)
-        record_offset = (int)(base_rid % (PAGESIZE/DATASIZE))
+        page_Index = self.index.read(base_rid)
+        base_page_index = page_Index[0][1]
+        record_offset = page_Index[1]
         prev_update_rid = self.page_directory[(0,INDIRECTION_COLUMN+base_page_index)].read(record_offset)
-
+        #print(prev_update_rid)
         #add new tail record
         offSet = 0;
         while not self.page_directory[(1,offSet)].has_capacity(): # finds the empty offset to insert new record at
@@ -142,7 +173,7 @@ class Table:
         offSet = (int)(index // (PAGESIZE/DATASIZE))*(4+self.num_columns) # offset is page index
         newIndex = (int)(index % (PAGESIZE/DATASIZE)) # newIndex is record index
         for x in range(4 + self.num_columns):
-            print(hex(self.page_directory[(1,x+offSet)].read(newIndex)))
+            print(self.page_directory[(1,x+offSet)].read(newIndex))
             print(int.from_bytes(self.page_directory[(1,x+offSet)].read(newIndex), byteorder = "big"), end =" ")
         print()
 
