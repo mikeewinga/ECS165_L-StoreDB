@@ -30,7 +30,7 @@ class Query:
         schema_encoding = 0
         record = Record(self.table.current_Rid_base, self.table.key, columns)
         self.table.insert(schema_encoding, record)
-        print(record)
+        #print(record)
 
     """
     # Read a record with specified key
@@ -47,8 +47,9 @@ class Query:
         rid = self.index.locate(key)
         record_set = []
         for x in range(0,len(rid)):
-            record_set.append(self.table.return_record(rid[0], query_columns))
-        print(record_set)
+            record_set.append(Record(rid, key,
+            self.table.return_record(rid[0], query_columns)))
+        #print(record_set)
         return record_set
 
     """

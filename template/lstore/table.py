@@ -16,6 +16,15 @@ class Record:
         self.key = key
         self.columns = columns
 
+    def __str__(self):
+        output = "["
+        for data in self.columns:
+            output += str(data) + ", "
+        output += "]"
+        output = output.replace(", ]", "]")
+        return output
+
+
 class Directory:
 
     def __init__(self):
