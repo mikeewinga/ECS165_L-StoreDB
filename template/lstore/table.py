@@ -91,9 +91,17 @@ class Table:
         page_offset = page_Index[0]
         #page_offset=(int)(rid // (PAGESIZE/DATASIZE))*(4+self.num_columns)
         #rid_offset=(int)(rid % (PAGESIZE/DATASIZE))
+        schema_enc= bin(int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+3)].read(page_Index[1]), byteorder = "big"))[2:]
         for x in range(0, self.num_columns):
             if(col_wanted[x]==1):
-                record_wanted.append(int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+x+4)].read(page_Index[1]), byteorder = "big"))
+                if(int(bin(x)[2:]) & int(schema_enc)):
+                    tail_rid = int.from_bytes(self.page_directory[(0, page_offset[1]+1)].read(page_Index[1]), byteorder = "big")
+                    n_page_Index = self.index.read(tail_rid)
+                    n_page_offset = n_page_Index[0]
+                    record_wanted.append(int.from_bytes(self.page_directory[(n_page_offset[0], n_page_offset[1]+x+4)].read(n_page_Index[1]), byteorder = "big"))
+                    pass
+                else:    
+                    record_wanted.append(int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+x+4)].read(page_Index[1]), byteorder = "big"))
         return record_wanted
 
     def update(self, base_rid, tail_schema, record):
