@@ -119,7 +119,7 @@ class Table:
             if(col_wanted[x]==1):
                 record_wanted.append(int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+x+4)].read(page_Index[1]), byteorder = "big"))
             else:
-                record_wanted.append(0)
+                record_wanted.append(None)
         # follow indirection column to updated tail records
         while next: # if next != 0, must follow tail records
             # get page number and offset of tail record
@@ -130,7 +130,7 @@ class Table:
             schema = int.from_bytes(schema, byteorder = "big")
             schema = self.getOffset(schema, len(col_wanted))
             for x in range(0, len(schema)):
-                if schema[x] == 1:
+                if (schema[x] == 1) and (col_wanted[x] == 1):
                     if (update_F[x] == 1):
                         update_F[x] = 0
                         # read the updated column and overwrite corresponding value in record_wanted
