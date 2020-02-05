@@ -87,22 +87,22 @@ class Table:
 
 
     """
-    Converts the schema bit string to column offset
+    Converts the schema bit string to schema bit array
     :param schema: integer bit string
-    :return: index position of 1 bit counting from left
+    :return: schema bit array
     """
-    def getOffset(self, schema):
-        offset = 0
-        if (not (schema - 16)):
-            offset += 0
-        elif (not (schema - 8)):
-            offset += 1
-        elif (not (schema - 4)):
-            offset += 2
-        elif (not (schema - 2)):
-            offset += 3
-        elif not ((schema - 1)):
-            offset += 4
+    def getOffset(self, schema, col_num):
+        if (col_num < 1):
+            return []
+        offset = [0] * col_num
+        bit = 2 ** (col_num-1)
+        itr = 0
+        while (bit > 0):
+            if((schema - bit) >= 0):
+                offset[itr] = 1
+                schema = schema - bit
+            itr = itr + 1
+            bit = bit // 2
         return offset
 
     def return_record(self, rid, col_wanted):
@@ -128,12 +128,14 @@ class Table:
             # get schema column of tail record
             schema = self.page_directory[(page_offset[0], page_offset[1]+SCHEMA_ENCODING_COLUMN)].read(page_Index[1])
             schema = int.from_bytes(schema, byteorder = "big")
-            schema = self.getOffset(schema)
-            if (update_F[schema] == 1):
-                update_F[schema] = 0
-                # read the updated column and overwrite corresponding value in record_wanted
-                record_wanted[schema] = int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+4+schema)].read(page_Index[1]), byteorder = "big")
-                # get next RID from indirection column
+            schema = self.getOffset(schema, len(col_wanted))
+            for x in range(0, len(schema)):
+                if schema[x] == 1:
+                    if (update_F[x] == 1):
+                        update_F[x] = 0
+                        # read the updated column and overwrite corresponding value in record_wanted
+                        record_wanted[x] = int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+4+x)].read(page_Index[1]), byteorder = "big")
+            # get next RID from indirection column
             next = self.page_directory[page_Index[0]].read(page_Index[1])
             next = int.from_bytes(next, byteorder = "big")
         return record_wanted

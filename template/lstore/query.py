@@ -57,13 +57,15 @@ class Query:
         if (self.hasIndex == 0) :
             self.index.create_index(self.index.table,0)
             self.hasIndex = 1
+        if len(columns) < 1:
+            return
         # create bitmap for schema encoding with 1 in the position of updated column
-        schema_encoding = 1 << (self.table.num_columns - 1)
+        bit = 2 ** (len(columns)-1)
+        schema_encoding = 0
         for x in columns:
-            if x == None:
-                schema_encoding >>= 1
-            else:
-                break
+            if x != None:
+                schema_encoding = schema_encoding + bit
+            bit = bit // 2
         rid = self.index.locate(key)
         record = Record(0, self.table.key, columns)
         for item in rid:
