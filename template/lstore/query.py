@@ -41,9 +41,9 @@ class Query:
             self.hasIndex = 1
         rid = self.index.locate(key)
         record_set = []
-        for x in range(0,len(rid)):
-            record_set.append(Record(rid, key,
-            self.table.return_record(rid[0], query_columns)))
+        for item in rid:
+            record_set.append(Record(item, key,
+            self.table.return_record(item, query_columns)))
         return record_set
 
     """
@@ -66,7 +66,8 @@ class Query:
                 break
         rid = self.index.locate(key)
         record = Record(0, self.table.key, columns)
-        self.table.update(rid[0], schema_encoding, record)
+        for item in rid:
+            self.table.update(item, schema_encoding, record)
 
     """
     :param start_range: int         # Start of the key range to aggregate
