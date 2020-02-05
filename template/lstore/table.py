@@ -107,15 +107,12 @@ class Table:
 
     def return_record(self, rid, col_wanted):
         record_wanted = []
-        #print(rid)
         page_Index = self.index.read(rid)
         page_offset = page_Index[0]
         update_F = [1] * len(col_wanted)
         # saves indirection column of base page in next
         next = self.page_directory[page_Index[0]].read(page_Index[1])
-        #print(next)
         next = int.from_bytes(next, byteorder = "big")
-        #print(self.index.read(next))
         # goes through each column and if user wants to read the column,
         #    appends user-requested data
         for x in range(0, self.num_columns):
@@ -132,10 +129,11 @@ class Table:
             schema = self.page_directory[(page_offset[0], page_offset[1]+SCHEMA_ENCODING_COLUMN)].read(page_Index[1])
             schema = int.from_bytes(schema, byteorder = "big")
             schema = self.getOffset(schema)
-            #print(schema)
-            # read the updated column and overwrite corresponding value in record_wanted
-            record_wanted[schema] = int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+4+schema)].read(page_Index[1]), byteorder = "big")
-            # get next RID from indirection column
+            if (update_F[schema] == 1):
+                update_F[schema] = 0
+                # read the updated column and overwrite corresponding value in record_wanted
+                record_wanted[schema] = int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+4+schema)].read(page_Index[1]), byteorder = "big")
+                # get next RID from indirection column
             next = self.page_directory[page_Index[0]].read(page_Index[1])
             next = int.from_bytes(next, byteorder = "big")
         return record_wanted
