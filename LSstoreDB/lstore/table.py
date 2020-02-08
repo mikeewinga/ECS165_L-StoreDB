@@ -66,6 +66,7 @@ class Table:
 
     def insert(self, schema, record):
         offSet = 0;
+        # loops through the base pages in the indirection column until finding a page with space
         while not self.page_directory[(0,offSet)].has_capacity():
             offSet = offSet + self.num_columns + 4
         self.index.write(self.current_Rid_base, [(0,offSet),

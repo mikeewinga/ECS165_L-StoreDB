@@ -36,7 +36,7 @@ class Query:
 
     def select(self, key, query_columns):
         # create index for column if needed
-        if (self.hasIndex == self.table.key) :
+        if (self.hasIndex == 0) :
             self.index.create_index(self.index.table,self.table.key)
             self.hasIndex = 1
         rid = self.index.locate(key)
@@ -54,7 +54,7 @@ class Query:
 
     def update(self, key, *columns):
         # create index for column if needed
-        if (self.hasIndex == self.table.key) :
+        if (self.hasIndex == 0) :
             self.index.create_index(self.index.table,self.table.key)
             self.hasIndex = 1
         if len(columns) < 1:
@@ -79,7 +79,7 @@ class Query:
 
     def sum(self, start_range, end_range, aggregate_column_index):
         # create index for column if needed
-        if (self.hasIndex == self.table.key) :
+        if (self.hasIndex == 0) :
             self.index.create_index(self.index.table,self.table.key)
             self.hasIndex = 1
         sum = 0
