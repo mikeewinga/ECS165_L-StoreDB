@@ -51,7 +51,7 @@ class Index:
         # for every record, map the key of given column number to RID and save in dictionary 
         step = NUM_METADATA_COLUMNS + table.num_columns
         for i in range(0, numIndexPages+1):
-            for j in range(0,table.pageranges[i].offSet+1,step):
+            for j in range(0,table.pageranges[i].bOffSet+1,step):
                 print(i, j)
                 keyPage = table.pageranges[i].pages[(0, NUM_METADATA_COLUMNS+column_number+j)]
                 ridPage = table.pageranges[i].pages[(0, 1+j)]

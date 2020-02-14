@@ -61,7 +61,6 @@ class Table:
         return data
 
     def insert(self, schema, record):
-        offSet = 0;
         prid = self.current_Rid_base//RANGESIZE
         if prid > self.current_Prid:
             self.current_Prid = prid
@@ -96,45 +95,8 @@ class Table:
         return self.pageranges[prid].return_record(rid, col_wanted)
 
     def update(self, base_rid, tail_schema, record):
-        page_Index = self.index.read(base_rid)
-        base_page_index = page_Index[0][1]
-        record_offset = page_Index[1]
-        prev_update_rid = self.page_directory[(0,INDIRECTION_COLUMN+base_page_index)].read(record_offset)
-        #print(prev_update_rid)
-        # add new tail record
-        # find the empty offset to insert new record at
-        offSet = 0;
-        while not self.page_directory[(1,offSet)].has_capacity():
-            offSet = offSet + self.num_columns + NUM_METADATA_COLUMNS
-        # set indirection column of tail record to previous update RID
-        self.page_directory[(1,INDIRECTION_COLUMN+offSet)].write(prev_update_rid)
-        # update the index page directory with tail record
-        self.index.write(self.current_Rid_tail, [(1,offSet),
-            self.page_directory[(1,RID_COLUMN+offSet)].num_records])
-        # set the RID of tail record
-        self.page_directory[(1,RID_COLUMN+offSet)].write(self.current_Rid_tail)
-        # set the timestamp and schema encoding
-        data = self.get_timestamp()
-        self.page_directory[(1,TIMESTAMP_COLUMN+offSet)].write(data)
-        self.page_directory[(1,SCHEMA_ENCODING_COLUMN+offSet)].write(tail_schema)
-        self.page_directory[(1,BASE_RID_COLUMN+offSet)].write(base_rid)
-        # copy in record data
-        for x in range(self.num_columns):
-            self.page_directory[(1,x + NUM_METADATA_COLUMNS+offSet)].write(record.columns[x])
-        #expand the tail page if needed
-        if not self.page_directory[(1,offSet)].has_capacity():
-            for x in range(self.num_columns + NUM_METADATA_COLUMNS):
-                self.page_directory[(1,x + self.total_tail_phys_pages)] = Page()
-            self.total_tail_phys_pages = self.total_tail_phys_pages + self.num_columns + NUM_METADATA_COLUMNS
-
-        # set base record indirection to rid of new tail record
-        self.page_directory[(0,INDIRECTION_COLUMN+base_page_index)].overwrite_record(record_offset, self.current_Rid_tail)
-        # change schema of base record
-        cur_base_schema = self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_page_index)].read(record_offset)
-        cur_base_schema = int.from_bytes(cur_base_schema,byteorder='big',signed=False)
-        new_base_schema = cur_base_schema | tail_schema
-        self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_page_index)].overwrite_record(record_offset, new_base_schema)
-
+        prid = self.index.read(base_rid)
+        self.pageranges[prid].update(base_rid, tail_schema, record, self.current_Rid_tail, self.get_timestamp())
         self.current_Rid_tail = self.current_Rid_tail - 1
 
     def debugRead(self, index):
