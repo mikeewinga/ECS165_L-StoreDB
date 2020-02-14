@@ -11,7 +11,7 @@ class Database():
         pass
 
     def close(self):
-        pass
+        pass 
 
     """
     # Creates a new table
