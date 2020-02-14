@@ -23,7 +23,7 @@ class Database():
         table = Table(name, key, num_columns)
         self.tables[name] = table
         self.num_tables = self.num_tables + 1
-        return table
+        return table 
 
     """
     # Deletes the specified table

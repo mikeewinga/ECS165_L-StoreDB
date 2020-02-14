@@ -1,12 +1,8 @@
 from lstore.page import *
 from time import time
 from lstore.index import Index
+from lstore.config import *
 import datetime
-
-INDIRECTION_COLUMN = 0
-RID_COLUMN = 1
-TIMESTAMP_COLUMN = 2
-SCHEMA_ENCODING_COLUMN = 3
 
 
 class Record:
@@ -42,10 +38,10 @@ class Table:
         self.name = name
         self.key = key
         self.num_columns = num_columns
-        self.total_base_phys_pages = num_columns + 4
-        self.total_tail_phys_pages = num_columns + 4
+        self.total_base_phys_pages = num_columns + NUM_METADATA_COLUMNS
+        self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
         self.page_directory = {}
-        for x in range((self.num_columns + 4)):
+        for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
             self.page_directory[(0,x)] = Page()
             self.page_directory[(1,x)] = Page()
         self.current_Rid_base = 1
@@ -68,7 +64,7 @@ class Table:
         offSet = 0;
         # loops through the base pages in the indirection column until finding a page with space
         while not self.page_directory[(0,offSet)].has_capacity():
-            offSet = offSet + self.num_columns + 4
+            offSet = offSet + self.num_columns + NUM_METADATA_COLUMNS
         self.index.write(self.current_Rid_base, [(0,offSet),
             self.page_directory[(0,RID_COLUMN+offSet)].num_records])
         self.page_directory[(0,INDIRECTION_COLUMN+offSet)].write(0)
@@ -77,13 +73,14 @@ class Table:
         #print(''.join(format(x, '02x') for x in data))
         self.page_directory[(0,TIMESTAMP_COLUMN+offSet)].write(data)
         self.page_directory[(0,SCHEMA_ENCODING_COLUMN+offSet)].write(schema)
+        self.page_directory[(0,BASE_RID_COLUMN+offSet)].write(0)
         #print(self.current_Rid_base)
         for x in range(self.num_columns):
-            self.page_directory[(0,x + 4+offSet)].write(record.columns[x])
+            self.page_directory[(0,x + NUM_METADATA_COLUMNS+offSet)].write(record.columns[x])
         if not self.page_directory[(0,offSet)].has_capacity():
-            for x in range(self.num_columns + 4):
+            for x in range(self.num_columns + NUM_METADATA_COLUMNS):
                 self.page_directory[(0,x + self.total_base_phys_pages)] = Page()
-            self.total_base_phys_pages = self.total_base_phys_pages + self.num_columns + 4
+            self.total_base_phys_pages = self.total_base_phys_pages + self.num_columns + NUM_METADATA_COLUMNS
         self.current_Rid_base = self.current_Rid_base + 1
 
 
@@ -118,7 +115,7 @@ class Table:
         #    appends user-requested data
         for x in range(0, self.num_columns):
             if(col_wanted[x]==1):
-                record_wanted.append(int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+x+4)].read(page_Index[1]), byteorder = "big"))
+                record_wanted.append(int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+x+NUM_METADATA_COLUMNS)].read(page_Index[1]), byteorder = "big"))
             else:
                 record_wanted.append(None)
         # follow indirection column to updated tail records
@@ -135,7 +132,7 @@ class Table:
                     if (update_F[x] == 1):
                         update_F[x] = 0
                         # read the updated column and overwrite corresponding value in record_wanted
-                        record_wanted[x] = int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+4+x)].read(page_Index[1]), byteorder = "big")
+                        record_wanted[x] = int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+NUM_METADATA_COLUMNS+x)].read(page_Index[1]), byteorder = "big")
             # get next RID from indirection column
             next = self.page_directory[page_Index[0]].read(page_Index[1])
             next = int.from_bytes(next, byteorder = "big")
@@ -151,7 +148,7 @@ class Table:
         # find the empty offset to insert new record at
         offSet = 0;
         while not self.page_directory[(1,offSet)].has_capacity():
-            offSet = offSet + self.num_columns + 4
+            offSet = offSet + self.num_columns + NUM_METADATA_COLUMNS
         # set indirection column of tail record to previous update RID
         self.page_directory[(1,INDIRECTION_COLUMN+offSet)].write(prev_update_rid)
         # update the index page directory with tail record
@@ -163,14 +160,15 @@ class Table:
         data = self.get_timestamp()
         self.page_directory[(1,TIMESTAMP_COLUMN+offSet)].write(data)
         self.page_directory[(1,SCHEMA_ENCODING_COLUMN+offSet)].write(tail_schema)
+        self.page_directory[(1,BASE_RID_COLUMN+offSet)].write(base_rid)
         # copy in record data
         for x in range(self.num_columns):
-            self.page_directory[(1,x + 4+offSet)].write(record.columns[x])
+            self.page_directory[(1,x + NUM_METADATA_COLUMNS+offSet)].write(record.columns[x])
         #expand the tail page if needed
         if not self.page_directory[(1,offSet)].has_capacity():
-            for x in range(self.num_columns + 4):
+            for x in range(self.num_columns + NUM_METADATA_COLUMNS):
                 self.page_directory[(1,x + self.total_tail_phys_pages)] = Page()
-            self.total_tail_phys_pages = self.total_tail_phys_pages + self.num_columns + 4
+            self.total_tail_phys_pages = self.total_tail_phys_pages + self.num_columns + NUM_METADATA_COLUMNS
 
         # set base record indirection to rid of new tail record
         self.page_directory[(0,INDIRECTION_COLUMN+base_page_index)].overwrite_record(record_offset, self.current_Rid_tail)
