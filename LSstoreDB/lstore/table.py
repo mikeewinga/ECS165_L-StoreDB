@@ -43,7 +43,7 @@ class Table:
         self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
         self.current_Rid_base = 1
         self.current_Rid_tail = 2**64 - 1
-        #self.current_Prid = 0
+        self.current_Prid = 0
         self.pageranges = {}
         self.pageranges[0] = PageRange(0, self.current_Rid_base, num_columns)
         self.index = Index()
@@ -63,6 +63,9 @@ class Table:
     def insert(self, schema, record):
         offSet = 0;
         prid = self.current_Rid_base//RANGESIZE
+        if prid > self.current_Prid:
+            self.current_Prid = prid
+            self.pageranges[prid] = PageRange(prid, self.current_Rid_base, self.num_columns)
         self.pageranges[prid].insert(schema, record, self.current_Rid_base, self.get_timestamp())
         self.index.write(self.current_Rid_base, prid)
         self.current_Rid_base = self.current_Rid_base + 1
@@ -89,38 +92,8 @@ class Table:
 
     def return_record(self, rid, col_wanted):
         record_wanted = []
-        page_Index = self.index.read(rid)
-        page_offset = page_Index[0]
-        update_F = [1] * len(col_wanted)
-        # saves indirection column of base page in next
-        next = self.page_directory[page_Index[0]].read(page_Index[1])
-        next = int.from_bytes(next, byteorder = "big")
-        # goes through each column and if user wants to read the column,
-        #    appends user-requested data
-        for x in range(0, self.num_columns):
-            if(col_wanted[x]==1):
-                record_wanted.append(int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+x+NUM_METADATA_COLUMNS)].read(page_Index[1]), byteorder = "big"))
-            else:
-                record_wanted.append(None)
-        # follow indirection column to updated tail records
-        while next: # if next != 0, must follow tail records
-            # get page number and offset of tail record
-            page_Index = self.index.read(next)
-            page_offset = page_Index[0]
-            # get schema column of tail record
-            schema = self.page_directory[(page_offset[0], page_offset[1]+SCHEMA_ENCODING_COLUMN)].read(page_Index[1])
-            schema = int.from_bytes(schema, byteorder = "big")
-            schema = self.getOffset(schema, len(col_wanted))
-            for x in range(0, len(schema)):
-                if (schema[x] == 1) and (col_wanted[x] == 1):
-                    if (update_F[x] == 1):
-                        update_F[x] = 0
-                        # read the updated column and overwrite corresponding value in record_wanted
-                        record_wanted[x] = int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+NUM_METADATA_COLUMNS+x)].read(page_Index[1]), byteorder = "big")
-            # get next RID from indirection column
-            next = self.page_directory[page_Index[0]].read(page_Index[1])
-            next = int.from_bytes(next, byteorder = "big")
-        return record_wanted
+        prid = self.index.read(rid)
+        return self.pageranges[prid].return_record(rid, col_wanted)
 
     def update(self, base_rid, tail_schema, record):
         page_Index = self.index.read(base_rid)

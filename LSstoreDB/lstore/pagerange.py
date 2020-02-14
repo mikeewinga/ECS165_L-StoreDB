@@ -62,19 +62,21 @@ class PageRange:
             bit = bit // 2
         return offset
 
-    def return_record(self, address, col_wanted):
+    def return_record(self, rid, col_wanted):
         record_wanted = []
+        address = self.index.read(rid)
         update_F = [1] * len(col_wanted)
         # saves indirection column of base page in next
-        next = self.page_directory[address.page].read(address.row)
+        next = self.pages[address.page].read(address.row)
         next = int.from_bytes(next, byteorder = "big")
         # goes through each column and if user wants to read the column,
         #    appends user-requested data
         for x in range(0, self.num_columns):
             if(col_wanted[x]==1):
-                record_wanted.append(int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+x+4)].read(address.row), byteorder = "big"))
+                record_wanted.append(int.from_bytes(self.pages[address+(x+NUM_METADATA_COLUMNS)].read(address.row), byteorder = "big"))
             else:
                 record_wanted.append(None)
+        """
         # follow indirection column to updated tail records
         while next: # if next != 0, must follow tail records
             # get page number and offset of tail record
@@ -93,6 +95,7 @@ class PageRange:
             # get next RID from indirection column
             next = self.page_directory[page_Index[0]].read(address.row)
             next = int.from_bytes(next, byteorder = "big")
+        """
         return record_wanted
 
     def update(self, base_rid, tail_schema, record):
