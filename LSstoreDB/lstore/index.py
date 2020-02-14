@@ -7,7 +7,7 @@ from lstore.config import *
 # This data structure is usually a B-Tree
 """
 
-
+NUM_METADATA_COLUMNS = 5
 class Index:
 
     """
@@ -49,9 +49,9 @@ class Index:
         numIndexPages = math.ceil( self.table.current_Rid_base / (PAGESIZE/DATASIZE) )
 
         # for every record, map the key of given column number to RID and save in dictionary 
-        step = 4 + table.num_columns
+        step = NUM_METADATA_COLUMNS + table.num_columns
         for i in range(0, numIndexPages):
-            keyPage = table.page_directory[(0, 4+column_number+(i*step))]
+            keyPage = table.page_directory[(0, NUM_METADATA_COLUMNS+column_number+(i*step))]
             ridPage = table.page_directory[(0, 1+(i*step))]
             for x in range(0, keyPage.num_records):
                 key = int.from_bytes(keyPage.read(x),byteorder='big',signed=False)
@@ -86,3 +86,15 @@ class Index:
 
     def drop_index(self, table, column_number):
         pass
+
+
+class Address:
+    #Base/Tail flag, Page-range number, Page number, Row number
+    def __init__(self, pagerange, flag, pagenumber, row):
+        self.pagerange = pagerange
+        self.page = (flag, pagenumber)
+        self.row = row
+        
+    def __add__(self, offset):
+        ret = (self.page[0],self.page[1]+offset)
+        return ret
