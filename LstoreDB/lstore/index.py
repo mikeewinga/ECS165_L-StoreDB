@@ -7,7 +7,6 @@ from lstore.config import *
 # This data structure is usually a B-Tree
 """
 
-
 class Index:
 
     """
@@ -15,8 +14,9 @@ class Index:
     indexDict as page directory: {RID : [(base/tail, page_num), record_offset]}
     -- base=0 tail=1
     """
-    def __init__(self, table):
-        self.table = table
+    def __init__(self, table=None):
+        if not table is None:
+            self.table = table
         self.indexDict = {}
         pass
 
@@ -46,20 +46,22 @@ class Index:
         self.table = table
 
         # number of pages needed for index
-        numIndexPages = math.ceil( self.table.current_Rid_base / (PAGESIZE/DATASIZE) )
+        numIndexPages = table.current_Rid_base // RANGESIZE
 
         # for every record, map the key of given column number to RID and save in dictionary 
-        step = 4 + table.num_columns
-        for i in range(0, numIndexPages):
-            keyPage = table.page_directory[(0, 4+column_number+(i*step))]
-            ridPage = table.page_directory[(0, 1+(i*step))]
-            for x in range(0, keyPage.num_records):
-                key = int.from_bytes(keyPage.read(x),byteorder='big',signed=False)
-                F = self.indexDict.get(key)
-                if F != None:
-                    F = F.append(ridPage.read(x))
-                else:
-                    self.indexDict[key] = [ridPage.read(x)]
+        step = NUM_METADATA_COLUMNS + table.num_columns
+        for i in range(0, numIndexPages+1):
+            for j in range(0,table.pageranges[i].bOffSet+1,step):
+                print(i, j)
+                keyPage = table.pageranges[i].pages[(0, NUM_METADATA_COLUMNS+column_number+j)]
+                ridPage = table.pageranges[i].pages[(0, 1+j)]
+                for x in range(0, keyPage.num_records):
+                    key = int.from_bytes(keyPage.read(x),byteorder='big',signed=False)
+                    F = self.indexDict.get(key)
+                    if F != None:
+                        F = F.append(ridPage.read(x))
+                    else:
+                        self.indexDict[key] = [ridPage.read(x)]
         pass
 
     """
@@ -86,3 +88,15 @@ class Index:
 
     def drop_index(self, table, column_number):
         pass
+
+
+class Address:
+    #Base/Tail flag, Page-range number, Page number, Row number
+    def __init__(self, pagerange, flag, pagenumber, row):
+        self.pagerange = pagerange
+        self.page = (flag, pagenumber)
+        self.row = row
+        
+    def __add__(self, offset):
+        ret = (self.page[0],self.page[1]+offset)
+        return ret
