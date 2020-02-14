@@ -7,7 +7,6 @@ from lstore.config import *
 # This data structure is usually a B-Tree
 """
 
-NUM_METADATA_COLUMNS = 5
 class Index:
 
     """

@@ -1,15 +1,8 @@
 from lstore.page import *
 from time import time
 from lstore.index import Index
+from lstore.config import *
 import datetime
-
-INDIRECTION_COLUMN = 0
-RID_COLUMN = 1
-TIMESTAMP_COLUMN = 2
-SCHEMA_ENCODING_COLUMN = 3
-BASE_RID_COLUMN=4
-NUM_METADATA_COLUMNS=5
-#TODO put all this in the config
 
 
 class Record:
