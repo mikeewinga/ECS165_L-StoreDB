@@ -14,8 +14,9 @@ class Index:
     indexDict as page directory: {RID : [(base/tail, page_num), record_offset]}
     -- base=0 tail=1
     """
-    def __init__(self, table):
-        self.table = table
+    def __init__(self, table=None):
+        if not table is None:
+            self.table = table
         self.indexDict = {}
         pass
 

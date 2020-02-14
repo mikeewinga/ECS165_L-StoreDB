@@ -1,6 +1,6 @@
 from lstore.config import *
 from lstore.page import *
-from lstore.index import Address
+from lstore.index import *
 
 """
 Table class needs an b tree to show which page range it should
@@ -11,56 +11,56 @@ with the currently saved index
 """
 class PageRange:
 
-    def __init__(self, start, num_columns):
+    def __init__(self, prid, start, num_columns):
+        self.prid = prid
         self.tps = 2**64
         self.base = start
         self.cap = start + RANGESIZE
         self.num_columns = num_columns
-        self.total_base_phys_pages = num_columns + 4
-        self.total_tail_phys_pages = num_columns + 4
+        self.total_base_phys_pages = num_columns + NUM_METADATA_COLUMNS
+        self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
         self.offSet = 0;
+        self.index = Index()
         self.pages = {}
-        for x in range((self.num_columns + 4)):
+        for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
             self.pages[(0,x)] = Page()
             self.pages[(1,x)] = Page()
 
     #pass in rid from table
-    def insert(self, schema, record, rid):
-        offSet = 0;
-        # loops through the base pages in the indirection column until finding a page with space
-        while not self.page_directory[(0,offSet)].has_capacity():
-            offSet = offSet + self.num_columns + 4
-        #MOVE Index should be handled in table
+    def insert(self, schema, record, rid, time):
+        address = Address(self.prid, 0, self.offSet, self.pages[(0,self.offSet)].num_records)
+        self.index.write(rid, address)
         #indirection initialized to 0
-        self.page_directory[(0,INDIRECTION_COLUMN+offSet)].write(0)
+        self.pages[address+INDIRECTION_COLUMN].write(0)
         #rid taken in from table
-        self.page_directory[(0,RID_COLUMN+offSet)].write(rid)
+        self.pages[address+RID_COLUMN].write(rid)
         #get and write time stamp
-        data = self.get_timestamp()
-        self.page_directory[(0,TIMESTAMP_COLUMN+offSet)].write(data)
+        self.pages[address+TIMESTAMP_COLUMN].write(time)
         #write schema passed in from table
-        self.page_directory[(0,SCHEMA_ENCODING_COLUMN+offSet)].write(schema)
+        self.pages[address+SCHEMA_ENCODING_COLUMN].write(schema)
+        #write base rid 0 for base pages
+        self.pages[address+BASE_RID_COLUMN].write(0)
         for x in range(self.num_columns):
-            self.page_directory[(0,x + 4 + offSet)].write(record.columns[x])
-        if not self.page_directory[(0, offSet)].has_capacity():
-            for x in range(self.num_columns + 4):
-                self.page_directory[(0,x + self.total_base_phys_pages)] = Page()
-            self.total_base_phys_pages = self.total_base_phys_pages + self.num_columns + 4
+            self.pages[address+(x+NUM_METADATA_COLUMNS)].write(record.columns[x])
+        if not self.pages[address.page].has_capacity():
+            self.offSet = self.offSet + self.num_columns + NUM_METADATA_COLUMNS
+            for x in range(self.num_columns + NUM_METADATA_COLUMNS):
+                self.pages[(0,x + self.offSet)] = Page()
 
 
     def getOffset(self, schema, col_num):
-    if (col_num < 1):
-        return []
-    offset = [0] * col_num
-    bit = 2 ** (col_num-1)
-    itr = 0
-    while (bit > 0):
-        if((schema - bit) >= 0):
-            offset[itr] = 1
-            schema = schema - bit
-        itr = itr + 1
-        bit = bit // 2
-    return offset
+        if (col_num < 1):
+            return []
+        offset = [0] * col_num
+        bit = 2 ** (col_num-1)
+        itr = 0
+        while (bit > 0):
+            if((schema - bit) >= 0):
+                offset[itr] = 1
+                schema = schema - bit
+            itr = itr + 1
+            bit = bit // 2
+        return offset
 
     def return_record(self, address, col_wanted):
         record_wanted = []

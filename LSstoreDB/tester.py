@@ -22,7 +22,7 @@ for i in range(0, 1000):
     records[key] = [key, randint(0, 20), randint(0, 20), randint(0, 20), randint(0, 20)]
     query.insert(*records[key])
     print('inserted', records[key])
-
+"""
 for key in records:
     record = query.select(key, [1, 1, 1, 1, 1])[0]
     error = False
@@ -64,3 +64,4 @@ for c in range(0, grades_table.num_columns):
         else:
             print('sum on [', keys[r[0]], ',', keys[r[1]], ']: ', column_sum)
 
+"""
