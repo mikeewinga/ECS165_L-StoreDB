@@ -81,6 +81,15 @@ class Index:
         if self.indexDict.get(RID):
             return self.indexDict[RID]
         return 0
+        
+    """
+    deletes record from index
+    """
+    def delete(self, RID):
+        if self.indexDict.get(RID):
+            del self.indexDict[RID]
+            return 1
+        return 0
 
     """
     # optional: Drop index of specific column

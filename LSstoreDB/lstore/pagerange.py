@@ -23,6 +23,7 @@ class PageRange:
         self.bOffSet = 0
         self.tOffSet = 0
         self.index = Index()
+        self.delete_queue = []
         self.pages = {}
         for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
             self.pages[(0,x)] = Page()
@@ -108,6 +109,7 @@ class PageRange:
         # add new tail record
         # set indirection column of tail record to previous update RID
         self.pages[address+INDIRECTION_COLUMN].write(prev_update_rid)
+        self.pages[address.page].read(address.row)
         # set the RID of tail record
         self.pages[address+RID_COLUMN].write(tid)
         # set the timestamp and schema encoding
@@ -130,3 +132,22 @@ class PageRange:
         new_base_schema = cur_base_schema | tail_schema
         self.pages[bAddress+SCHEMA_ENCODING_COLUMN].overwrite_record(bAddress.row, new_base_schema)
 
+    def delete(self, base_rid):
+        address = self.index.read(base_rid)
+        if self.index.delete(base_rid):
+            self.delete_queue.append(base_rid)
+        self.pages[address+RID_COLUMN].overwrite_record(address.row, 0)
+        # saves indirection column of base page in next
+        next = self.pages[address.page].read(address.row)
+        next = int.from_bytes(next, byteorder = "big")
+
+        # follow indirection column to updated tail records
+        while next: # if next != 0, must follow tail records
+            # get page number and offset of tail record
+            address = self.index.read(next)
+            self.index.delete(next)
+            self.pages[address+RID_COLUMN].overwrite_record(address.row, 0)
+            # get next RID from indirection column
+            next = self.pages[address.page].read(address.row)
+            next = int.from_bytes(next, byteorder = "big")
+        

@@ -13,9 +13,14 @@ class Query:
         self.hasIndex = 0
         pass
 
+    """
+    Deletes key from database and index
+    """
     def delete(self, key):
         rid = self.index.locate(key)
+        self.index.delete(key)
         self.table.delete(rid[0])
+        
 
     """
     # Insert a record with specified columns
