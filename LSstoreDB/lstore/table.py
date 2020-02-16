@@ -98,6 +98,11 @@ class Table:
         prid = self.index.read(base_rid)
         self.pageranges[prid].update(base_rid, tail_schema, record, self.current_Rid_tail, self.get_timestamp())
         self.current_Rid_tail = self.current_Rid_tail - 1
+        
+    def delete(self, base_rid):
+        prid = self.index.read(base_rid)
+        self.index.delete(base_rid)
+        self.pageranges[prid].delete(base_rid)
 
     def debugRead(self, index):
         offSet = (int)(index // (PAGESIZE/DATASIZE))*(4+self.num_columns) # offset is page index
