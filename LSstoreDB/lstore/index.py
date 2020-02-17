@@ -27,7 +27,7 @@ class Index:
     :return: list of RID's
     """
 
-    def locate(self, value):
+    def locate(self, column, value):
         intList = [] # saves the RID's of matching records
         if self.indexDict.get(value):  # check if given key exists in indexDict
             byteList =  self.indexDict[value]
@@ -36,25 +36,28 @@ class Index:
                 intList.append(int.from_bytes(x,byteorder='big',signed=False))
         return intList
 
+    """
+    # Returns the RIDs of all records with values in column "column" between "begin" and "end"
+    """
+    def locate_range(self, begin, end, column):
+        pass
 
     """
     # optional: Create index on specific column
     :param column_number: int
     """
 
-    def create_index(self, table, column_number):
-        self.table = table
-
+    def create_index(self, column_number):
         # number of pages needed for index
-        numIndexPages = table.current_Rid_base // RANGESIZE
+        numIndexPages = self.table.current_Rid_base // RANGESIZE
 
         # for every record, map the key of given column number to RID and save in dictionary 
-        step = NUM_METADATA_COLUMNS + table.num_columns
+        step = NUM_METADATA_COLUMNS + self.table.num_columns
         for i in range(0, numIndexPages+1):
-            for j in range(0,table.pageranges[i].bOffSet+1,step):
+            for j in range(0,self.table.pageranges[i].bOffSet+1,step):
                 print(i, j)
-                keyPage = table.pageranges[i].pages[(0, NUM_METADATA_COLUMNS+column_number+j)]
-                ridPage = table.pageranges[i].pages[(0, 1+j)]
+                keyPage = self.table.pageranges[i].pages[(0, NUM_METADATA_COLUMNS+column_number+j)]
+                ridPage = self.table.pageranges[i].pages[(0, 1+j)]
                 for x in range(0, keyPage.num_records):
                     key = int.from_bytes(keyPage.read(x),byteorder='big',signed=False)
                     F = self.indexDict.get(key)
@@ -95,7 +98,7 @@ class Index:
     # optional: Drop index of specific column
     """
 
-    def drop_index(self, table, column_number):
+    def drop_index(self, column_number):
         pass
 
 

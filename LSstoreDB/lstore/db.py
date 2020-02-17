@@ -7,7 +7,7 @@ class Database():
         self.num_tables = 0
         pass
 
-    def open(self):
+    def open(self, path):
         pass
 
     def close(self):
@@ -32,4 +32,10 @@ class Database():
         if name in self.tables:
             del self.tables[name]
             self.num_tables = self.num_tables - 1
+        pass
+
+    """
+    # Retruns table with the passed name
+    """
+    def get_table(self, name):
         pass
