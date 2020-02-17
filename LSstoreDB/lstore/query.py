@@ -17,7 +17,7 @@ class Query:
     Deletes key from database and index
     """
     def delete(self, key):
-        rid = self.index.locate(key)
+        rid = self.index.locate(0, key)
         self.index.delete(key)
         self.table.delete(rid[0])
         
@@ -39,12 +39,12 @@ class Query:
     :return: list of selected records
     """
 
-    def select(self, key, query_columns):
+    def select(self, key, column, query_columns):
         # create index for column if needed
         if (self.hasIndex == 0) :
-            self.index.create_index(self.index.table,self.table.key)
+            self.index.create_index(self.table.key)
             self.hasIndex = 1
-        rid = self.index.locate(key)
+        rid = self.index.locate(0, key)
         record_set = []
         for item in rid:
             record_set.append(Record(item, key,
@@ -60,7 +60,7 @@ class Query:
     def update(self, key, *columns):
         # create index for column if needed
         if (self.hasIndex == 0) :
-            self.index.create_index(self.index.table,self.table.key)
+            self.index.create_index(self.table.key)
             self.hasIndex = 1
         if len(columns) < 1:
             return
@@ -71,7 +71,7 @@ class Query:
             if x != None:
                 schema_encoding = schema_encoding + bit
             bit = bit // 2
-        rid = self.index.locate(key)
+        rid = self.index.locate(0, key)
         record = Record(0, self.table.key, columns)
         for item in rid:
             self.table.update(item, schema_encoding, record)
@@ -85,7 +85,7 @@ class Query:
     def sum(self, start_range, end_range, aggregate_column_index):
         # create index for column if needed
         if (self.hasIndex == 0) :
-            self.index.create_index(self.index.table,self.table.key)
+            self.index.create_index(self.table.key)
             self.hasIndex = 1
         sum = 0
         column_agg =[]
@@ -97,7 +97,7 @@ class Query:
                 column_agg.append(0)
         # sum the values of the aggregate column in specified interval
         for n in range(start_range, (end_range+1)):
-            RID = self.index.locate(n)
+            RID = self.index.locate(0, n)
             for cur in RID:
                 sum += self.table.return_record(cur, column_agg)[aggregate_column_index]
         return sum
