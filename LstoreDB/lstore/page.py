@@ -2,10 +2,13 @@ from lstore.config import *
 
 class Page:
 
-    def __init__(self, dirty):
+    def __init__(self, bytes = None):
         self.num_records = 0
-        self.data = bytearray(PAGESIZE)
-        self.dirty = dirty
+        self.dirty = False
+        if (bytes != None):
+            self.data = bytearray(bytes)
+        else:
+            self.data = bytearray(PAGESIZE)
 
     """
     Checks if there is space left in page
