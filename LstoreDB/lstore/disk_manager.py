@@ -6,6 +6,7 @@ from lstore.index import Address
 
 BIN_EXTENSION = ".bin"
 INDEX_EXTENSION = "_index.txt"
+COLUMN_BLOCK_SIZE = 10
 
 class Bufferpool:
     def __init__(self):
@@ -62,6 +63,8 @@ class DiskManager:
     FIXME need functions that can handle new pages for different columns being created and written to disk
         this would affect the table indexes
         also involves the column-whitespace-blocking thing in the file
+    also file_offset--is this in terms of page numbers, so need to multiply by 4096 to get byte offset?
+        or already in terms of bytes?
     """
     def __init__(self, directory_path):
         self.bufferpool = Bufferpool()
@@ -69,9 +72,10 @@ class DiskManager:
         self.file_directory = {}  # { string table_name : int file_num }
         self.active_table_indexes = {}  # { string table_name : {address tuple (int page_range, (int base/tail, int page_num)) : physical offset in file}}
 
-    def new_table(self, table_name):
+    def new_table(self, table_name, total_columns):
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
-        with open(filename, "xb") as file: pass  # Creates file and closes it right after
+        with open(filename, "r+b") as file:  # Creates file
+            #FIXME need to block out column whitespaces in file
         filename = self.directory_path + table_name + INDEX_EXTENSION  # index/config file for table
         with open(filename, "x") as file: pass
 
@@ -80,10 +84,13 @@ class DiskManager:
             #load the index into active_table_indexes
             self.load_index_from_disk(table_name)
 
-    # def new_page_range(self, table_name, page_range):
-    #     new_page = Page()
-    #     bufferpool.add_page(table_name, address, new_page)
-    #     # FIXME also write the entire new page range to disk
+    def new_page_range(self, table_name, page_range_num):
+        filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
+        with open(filename, "r+b") as file:
+            # FIXME block out space for the new page range (is this needed? column blocks are already allocated)
+            # or maybe check if need to allocate new column blocks
+            # add page range + page mapping to the table index
+        bufferpool.add_page(table_name, address, new_page)
 
     def delete_page(self, table_name, base_tail, page_num):
         pass #FIXME
@@ -162,43 +169,3 @@ class DiskManager:
                     + str(table_index[address_tuple]) + "\n"
                 file.write(index_line)
         del self.active_table_indexes[table_name]
-
-
-"""
--page sizes:
-    -4096 bytes
-    -512 record slots, each 8 bytes
--how to detect if we're writing to a newly created page that hasn't been saved in disk/bufferpool?
-    -also, how to differentiate between locations of base and tail pages?
--bufferpool with max page size--in terms of physical pages
-    -dictionary that maps table name + abstract page number to corresponding page in pool
-    -note that there could be pages from multiple tables files in the one bufferpool
-    -function that reads the page in pool
-    -function that writes to the page in pool (need to add bool to page.py to mark if it's dirty)
-        -also need both write and overwrite funcs
-    -function to copy in new page and find area to overwrite during evictions at the granularity of entire base page
-    -variable tracking the LRU/MRU pages?
--disk_manager class:
-    -instance of bufferpool object
-    -dictionary file directory that maps table names to the file on disk
-    -function that copies the needed page from file into bufferpool
-    -function that evicts page from bufferpool and flushes it to file if dirty
-    -function that takes in table name and page number, and maps to either:
-        -the page in bufferpool
-        -the physical page on file (and brings it into memory)
-    -functions to read/write the pages in bufferpool
-    -deleting entire table or physical pages?
--each table has corresponding file, and the file stores pages in sets of multiple page ranges
-    -10 page ranges in 10,000 record table
-    -4 KB per loadable chunk of memory
-    -format it so that seeking is easy
-    -will want to convert into bytearray
--file manipulation:
-    -opening file just gets you file pointer
-    -any operation on file will load file into memory, but if you only want to partially load the
-    file, then use process(line, file seek(), chunk = infile.read(chunksize) etc. for partial loading into RAM
-        -https://stackoverflow.com/questions/6475328/how-can-i-read-large-text-files-in-python-line-by-line-without-loading-it-into
--later on, may need to change table.py functions to integrate the disk manager
-    (but the Index page directory in table.py shouldn't change)
--Page() is in-memory, maybe need a converter to convert Page() to file storage and parse vice versa
-"""
