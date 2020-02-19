@@ -14,15 +14,10 @@ class Index:
     indexDict as page directory: {RID : [(base/tail, page_num), record_offset]}
     -- base=0 tail=1
     """
-    def __init__(self, table=None):
-        self.table = None
-        if not table is None:
-            self.table = table
-            self.hasIndex = [0]*table.num_columns
-            self.indexDict = [{}]*table.num_columns
-        else:
-            self.indexDict = {}
-        pass
+    def __init__(self, table):
+        self.table = table
+        self.hasIndex = [0]*table.num_columns
+        self.indexDict = [{}]*table.num_columns
 
     """
     # returns the location of all records with the given value
@@ -87,7 +82,26 @@ class Index:
                     else:
                         self.indexDict[column_number][key] = [ridPage.read(x)]
         pass
+        
+    """
+    deletes record from index
+    """
+    def delete(self, RID, column_number=0):
+        if self.indexDict[column_number].get(RID):
+            del self.indexDict[column_number][RID]
+            return 1
+        return 0
 
+    """
+    # optional: Drop index of specific column
+    """
+
+    def drop_index(self, column_number):
+        pass
+
+class PageDirectory:
+    def __init__(self):
+        self.indexDict = {}
     """
     # add key-value pair mapping RID to page + offset
     :param value: {RID : [(base/tail, page_num), record_offset]}
@@ -105,28 +119,15 @@ class Index:
         if self.indexDict.get(RID):
             return self.indexDict[RID]
         return 0
-        
+
     """
     deletes record from index
     """
     def delete(self, RID, column_number=0):
-        if self.table:
-            if self.indexDict[column_number].get(RID):
-                del self.indexDict[column_number][RID]
-                return 1
-        else:
-            if self.indexDict.get(RID):
-                del self.indexDict[RID]
-                return 1
+        if self.indexDict.get(RID):
+            del self.indexDict[RID]
+            return 1
         return 0
-
-    """
-    # optional: Drop index of specific column
-    """
-
-    def drop_index(self, column_number):
-        pass
-
 
 class Address:
     #Base/Tail flag, Page-range number, Page number, Row number

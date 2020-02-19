@@ -46,7 +46,7 @@ class Table:
         self.current_Prid = 0
         self.pageranges = {}
         self.pageranges[0] = PageRange(0, self.current_Rid_base, num_columns)
-        self.index = Index()
+        self.index = PageDirectory()
         pass
 
     def get_timestamp(self):

@@ -22,7 +22,7 @@ class PageRange:
         self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
         self.bOffSet = 0
         self.tOffSet = 0
-        self.index = Index()
+        self.index = PageDirectory()
         self.delete_queue = []
         self.pages = {}
         for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
