@@ -37,7 +37,7 @@ class Index:
             byteList =  self.indexDict[column][value]
             # convert byte format to RID numbers
             for x in byteList:
-                intList.append(int.from_bytes(x,byteorder='big',signed=False))
+                intList.append(x)
         return intList
 
     """
@@ -45,6 +45,19 @@ class Index:
     """
     def locate_range(self, begin, end, column):
         pass
+        
+    def update(self, rid, original, *input):
+        for i in range(0, len(input)):
+            if input[i]:
+                if self.hasIndex[i]:
+                    if self.indexDict[i].get(original[i]):
+                        byteList = self.indexDict[i][original[i]]
+                        byteList.remove(rid)
+                    F = self.indexDict[i].get(input[i])
+                    if F:
+                        F.append(rid)
+                    else:
+                        self.indexDict[i][input[i]] = [rid]
 
     """
     # optional: Create index on specific column
@@ -68,7 +81,6 @@ class Index:
                 ridPage = self.table.pageranges[i].pages[(0, 1+j)]
                 for x in range(0, ridPage.num_records):
                     key = self.table.return_record(int.from_bytes(ridPage.read(x),byteorder='big',signed=False), query_columns)[column_number]
-                    print(key)
                     F = self.indexDict[column_number].get(key)
                     if F != None:
                         F = F.append(ridPage.read(x))

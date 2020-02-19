@@ -18,6 +18,7 @@ class Query:
     """
     def delete(self, key):
         rid = self.index.locate(0, key)
+        rid = int.from_bytes(rid[0], byteorder = "big")
         self.index.delete(key, self.table.key)
         self.table.delete(rid[0])
         
@@ -45,8 +46,9 @@ class Query:
         rid = self.index.locate(0, key)
         record_set = []
         for item in rid:
-            record_set.append(Record(item, key,
-            self.table.return_record(item, query_columns)))
+            itemr = int.from_bytes(item, byteorder = "big")
+            record_set.append(Record(itemr, key,
+            self.table.return_record(itemr, query_columns)))
         return record_set
 
     """
@@ -67,10 +69,13 @@ class Query:
             if x != None:
                 schema_encoding = schema_encoding + bit
             bit = bit // 2
-        rid = self.index.locate(0, key)
+        rid = self.index.locate(self.table.key, key)
+        ridr = int.from_bytes(rid[0], byteorder = "big")
+        self.index.update(rid[0], self.table.return_record(ridr, [1, 1, 1, 1, 1]), *columns)
         record = Record(0, self.table.key, columns)
         for item in rid:
-            self.table.update(item, schema_encoding, record)
+            itemr = int.from_bytes(item, byteorder = "big")
+            self.table.update(itemr, schema_encoding, record)
 
     """
     :param start_range: int         # Start of the key range to aggregate
@@ -93,5 +98,6 @@ class Query:
         for n in range(start_range, (end_range+1)):
             RID = self.index.locate(0, n)
             for cur in RID:
-                sum += self.table.return_record(cur, column_agg)[aggregate_column_index]
+                curr = int.from_bytes(cur, byteorder = "big")
+                sum += self.table.return_record(curr, column_agg)[aggregate_column_index]
         return sum
