@@ -31,7 +31,6 @@ class Bufferpool:
     def read(self, table_name, address):
         page = self.page_map[(table_name, address.page_range, address.page)]
         self.page_map.move_to_end((table_name, address.page_range, address.page))
-        self.page_map.move_to_end((table_name, address.page_range, address.page))
         return page.read(address.row)
 
     def append_write(self, table_name, address, value):
@@ -40,13 +39,11 @@ class Bufferpool:
         page.dirty = True
         self.page_map.move_to_end((table_name, address.page_range, address.page))
 
-
     def overwrite(self, table_name, address, value):
         page = self.page_map[(table_name, address.page_range, address.page)]
         page.overwrite_record(address.row, value)
         page.dirty = True
         self.page_map.move_to_end((table_name, address.page_range, address.page))
-
 
     def delete(self, table_name, address):
         page = self.page_map[(table_name, address.page_range, address.page)]
@@ -159,9 +156,10 @@ class DiskManager:
     """
     def load_page_from_disk(self, table_name, address):
         if (self.bufferpool.is_full()):
-            # evict page and flush it to disk first
+            # evict page and flush it to disk if dirty
             evict_page = self.bufferpool.evict()
-            self.flush_page(evict_page)
+            if (evict_page[1].dirty):
+                self.flush_page(evict_page)
 
         # then locate page from disk and copy, save in Page() object, then add to buffer pool
         if table_name not in active_table_indexes:
@@ -202,6 +200,10 @@ class DiskManager:
             file.write(page.data)
         pass
 
+    """
+    FIXME when should we call this function?
+        need to flush the index to file when table isn't active anymore--how to detect that?
+    """
     def flush_index(self, table_name):
         table_index = self.active_table_indexes[table_name]
         filename = self.directory_path + table_name + INDEX_EXTENSION # file for table index
