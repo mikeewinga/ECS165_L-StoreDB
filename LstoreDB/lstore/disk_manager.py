@@ -30,17 +30,23 @@ class Bufferpool:
     """
     def read(self, table_name, address):
         page = self.page_map[(table_name, address.page_range, address.page)]
+        self.page_map.move_to_end((table_name, address.page_range, address.page))
+        self.page_map.move_to_end((table_name, address.page_range, address.page))
         return page.read(address.row)
 
     def append_write(self, table_name, address, value):
         page = self.page_map[(table_name, address.page_range, address.page)]
         page.write(value)
         page.dirty = True
+        self.page_map.move_to_end((table_name, address.page_range, address.page))
+
 
     def overwrite(self, table_name, address, value):
         page = self.page_map[(table_name, address.page_range, address.page)]
         page.overwrite_record(address.row, value)
         page.dirty = True
+        self.page_map.move_to_end((table_name, address.page_range, address.page))
+
 
     def delete(self, table_name, address):
         page = self.page_map[(table_name, address.page_range, address.page)]
@@ -56,6 +62,8 @@ class Bufferpool:
 
     def add_page(self, table_name, address, page):
         self.page_map[(table_name, address.page_range, address.page)] = page
+        self.page_map.move_to_end((table_name, address.page_range, address.page))
+
 
 
 class DiskManager:
