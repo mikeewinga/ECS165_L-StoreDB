@@ -10,15 +10,14 @@ class Query:
     def __init__(self, table):
         self.table = table
         self.index = Index(table)
-        self.hasIndex = 0
-        pass
 
     """
     Deletes key from database and index
     """
     def delete(self, key):
         rid = self.index.locate(0, key)
-        self.index.delete(key)
+        rid = int.from_bytes(rid[0], byteorder = "big")
+        self.index.delete(key, self.table.key)
         self.table.delete(rid[0])
         
 
@@ -28,9 +27,8 @@ class Query:
     """
 
     def insert(self, *columns):
-        schema_encoding = 0  # schema is 0 since no columns are updated yet
         record = Record(self.table.current_Rid_base, self.table.key, columns)
-        self.table.insert(schema_encoding, record)
+        self.table.insert(record)
 
     """
     # Read columns from a record with specified key
@@ -41,14 +39,13 @@ class Query:
 
     def select(self, key, column, query_columns):
         # create index for column if needed
-        if (self.hasIndex == 0) :
-            self.index.create_index(self.table.key)
-            self.hasIndex = 1
+        self.index.create_index(column)
         rid = self.index.locate(0, key)
         record_set = []
         for item in rid:
-            record_set.append(Record(item, key,
-            self.table.return_record(item, query_columns)))
+            itemr = int.from_bytes(item, byteorder = "big")
+            record_set.append(Record(itemr, key,
+            self.table.return_record(itemr, query_columns)))
         return record_set
 
     """
@@ -59,9 +56,7 @@ class Query:
 
     def update(self, key, *columns):
         # create index for column if needed
-        if (self.hasIndex == 0) :
-            self.index.create_index(self.table.key)
-            self.hasIndex = 1
+        self.index.create_index(self.table.key)
         if len(columns) < 1:
             return
         # create bitmap for schema encoding with 1 in the position of updated column
@@ -71,10 +66,13 @@ class Query:
             if x != None:
                 schema_encoding = schema_encoding + bit
             bit = bit // 2
-        rid = self.index.locate(0, key)
+        rid = self.index.locate(self.table.key, key)
+        ridr = int.from_bytes(rid[0], byteorder = "big")
+        self.index.update(rid[0], self.table.return_record(ridr, [1, 1, 1, 1, 1]), *columns)
         record = Record(0, self.table.key, columns)
         for item in rid:
-            self.table.update(item, schema_encoding, record)
+            itemr = int.from_bytes(item, byteorder = "big")
+            self.table.update(itemr, schema_encoding, record)
 
     """
     :param start_range: int         # Start of the key range to aggregate
@@ -84,9 +82,7 @@ class Query:
 
     def sum(self, start_range, end_range, aggregate_column_index):
         # create index for column if needed
-        if (self.hasIndex == 0) :
-            self.index.create_index(self.table.key)
-            self.hasIndex = 1
+        self.index.create_index(self.table.key)
         sum = 0
         column_agg =[]
         # create a list of 0's and 1 where 1 is in the position of aggregate column
@@ -99,5 +95,6 @@ class Query:
         for n in range(start_range, (end_range+1)):
             RID = self.index.locate(0, n)
             for cur in RID:
-                sum += self.table.return_record(cur, column_agg)[aggregate_column_index]
+                curr = int.from_bytes(cur, byteorder = "big")
+                sum += self.table.return_record(curr, column_agg)[aggregate_column_index]
         return sum
