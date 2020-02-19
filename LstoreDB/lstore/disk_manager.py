@@ -67,15 +67,16 @@ class DiskManager:
         or already in terms of bytes?
     """
     def __init__(self, directory_path):
+        # FIXME will we need to keep variables for num_col_block_sets and num_page_rows for each table?
         self.bufferpool = Bufferpool()
         self.directory_path = directory_path
         self.file_directory = {}  # { string table_name : int file_num }
-        self.active_table_indexes = {}  # { string table_name : {address tuple (int page_range, (int base/tail, int page_num)) : physical offset in file}}
+        self.active_table_indexes = {}  # { string table_name : 5)) : physical offset in file}}
 
     def new_table(self, table_name, total_columns):
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
         with open(filename, "r+b") as file:  # Creates file
-            #FIXME need to block out column whitespaces in file
+            #FIXME need to block out column whitespaces in file for the initially created page range
         filename = self.directory_path + table_name + INDEX_EXTENSION  # index/config file for table
         with open(filename, "x") as file: pass
 
@@ -90,7 +91,13 @@ class DiskManager:
             # FIXME block out space for the new page range (is this needed? column blocks are already allocated)
             # or maybe check if need to allocate new column blocks
             # add page range + page mapping to the table index
+            # and update table metadata for num_col_block_sets and ending_block_pages as needed
         bufferpool.add_page(table_name, address, new_page)
+
+    def new_page(self, table_name, address):
+        filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
+        filesize = path.getsize(filename)
+        
 
     def delete_page(self, table_name, base_tail, page_num):
         pass #FIXME
