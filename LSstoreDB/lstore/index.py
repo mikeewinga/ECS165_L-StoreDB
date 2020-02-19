@@ -132,6 +132,8 @@ class Address:
     #Base/Tail flag, Page-range number, Page number, Row number
     def __init__(self, pagerange, flag, pagenumber, row):
         self.pagerange = pagerange
+        self.flag = flag
+        self.pagenumber = pagenumber
         self.page = (flag, pagenumber)
         self.row = row
         
