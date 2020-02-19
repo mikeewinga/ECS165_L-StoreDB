@@ -6,7 +6,7 @@ from lstore.index import Address
 
 BIN_EXTENSION = ".bin"
 INDEX_EXTENSION = "_index.txt"
-COLUMN_BLOCK_SIZE = 10
+COLUMN_BLOCK_PAGES = 10
 
 class Bufferpool:
     def __init__(self):
@@ -60,23 +60,24 @@ class Bufferpool:
 
 class DiskManager:
     """
-    FIXME need functions that can handle new pages for different columns being created and written to disk
-        this would affect the table indexes
-        also involves the column-whitespace-blocking thing in the file
-    also file_offset--is this in terms of page numbers, so need to multiply by 4096 to get byte offset?
+    TO-DO list:
+    -FIXME also file_offset--is this in terms of page numbers, so need to multiply by 4096 to get byte offset?
         or already in terms of bytes?
+    -check that bufferpool LRU eviction thing works
+    -alternative to directly modifying PageRange class: make a new wrapper Page class for Pagerange to use so that I don't have to change all the pagerange code
+        in that new class, call DiskManager and pass in the page's conceptual address
+        so that DiskManager can allocate new page or load into bufferpool, read, write etc.
+        -the old Page class will be in-memory page to use
+    -if directly modify PageRange class, then need to add page_has_capacity function for PageRange to use
     """
     def __init__(self, directory_path):
-        # FIXME will we need to keep variables for num_col_block_sets and num_page_rows for each table?
         self.bufferpool = Bufferpool()
         self.directory_path = directory_path
-        self.file_directory = {}  # { string table_name : int file_num }
-        self.active_table_indexes = {}  # { string table_name : 5)) : physical offset in file}}
+        self.active_table_indexes = {}  # { string table_name : {address tuple (int page_range, (int base/tail, int page_num)) : file_offset_bytes }}
 
     def new_table(self, table_name, total_columns):
-        filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
-        with open(filename, "r+b") as file:  # Creates file
-            #FIXME need to block out column whitespaces in file for the initially created page range
+        filename = self.directory_path + table_name + BIN_EXTENSION  # binary file for table data
+        with open(filename, "x") as file: pass  # Creates file
         filename = self.directory_path + table_name + INDEX_EXTENSION  # index/config file for table
         with open(filename, "x") as file: pass
 
@@ -84,20 +85,47 @@ class DiskManager:
         if path.exists(self.directory_path + table_name):
             #load the index into active_table_indexes
             self.load_index_from_disk(table_name)
+            return True
+        else:
+            return False
 
-    def new_page_range(self, table_name, page_range_num):
-        filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
-        with open(filename, "r+b") as file:
-            # FIXME block out space for the new page range (is this needed? column blocks are already allocated)
-            # or maybe check if need to allocate new column blocks
-            # add page range + page mapping to the table index
-            # and update table metadata for num_col_block_sets and ending_block_pages as needed
-        bufferpool.add_page(table_name, address, new_page)
-
-    def new_page(self, table_name, address):
+    def new_page(self, table_name, total_columns, address):
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
         filesize = path.getsize(filename)
-        
+        with open(filename, "r+b") as file:
+            # check if last page slot isn't empty -> means the column block is full
+                # and we have to allocate new column blocks
+            file_offset = filesize - PAGESIZE  # get offset of last page slot
+            file.seek(file_offset)
+            last_page_TPS = file.read(DATASIZE)
+            if (last_page_TPS != 0):
+                # append whitespace for new set of column blocks to end of file here
+                file.seek(filesize)
+                file.write(bytearray(PAGESIZE * COLUMN_BLOCK_PAGES * total_columns))
+                file_offset = filesize  # reset file_offset to start of new set of column blocks
+            else:
+                file_offset = filesize - (PAGESIZE * COLUMN_BLOCK_PAGES * total_columns) # get offset of first page slot in last set of column blocks
+                file.seek(file_offset)
+                page_TPS = file.read(DATASIZE)
+                while (page_TPS != 0):  # manually search column block until empty space is found
+                    file_offset += PAGESIZE
+                    file.seek(file_offset)
+                    page_TPS = file.read(DATASIZE)
+            # write the TPS = 2^64 - 1 for first entry in the new page, for each column block
+                # at the same time, add page mapping to table index
+            init_TPS = 2**64 - 1
+            init_TPS_bytes = init_TPS.to_bytes(8,byteorder = "big")
+            table_index = self.active_table_indexes[table_name]
+            for i in range(total_columns):
+                file.seek(file_offset)
+                file.write(init_TPS_bytes)  # write TPS number
+                table_index[(address.pagerange, address.page)] = file_offset  # add mapping from conceptual address to file offset to table index
+                # also load the new page into bufferpool
+                in_memory_pg = Page()
+                in_memory_pg.write(init_TPS_bytes)
+                self.bufferpool.add_page(table_name, address, in_memory_pg)
+                file_offset += (PAGESIZE * COLUMN_BLOCK_PAGES)
+
 
     def delete_page(self, table_name, base_tail, page_num):
         pass #FIXME
@@ -105,7 +133,7 @@ class DiskManager:
     def read(self, table_name, address):
         if (!self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
-        return self.bufferpool.read(table_name, base_tail, page_num, record_offset)
+        return self.bufferpool.read(table_name, address)
 
     def append_write(self, table_name, address, value):
         if (!self.bufferpool.contains_page(table_name, address)):
@@ -130,7 +158,8 @@ class DiskManager:
         # then locate page from disk and copy, save in Page() object, then add to buffer pool
         if table_name not in active_table_indexes:
             self.load_index_from_disk(table_name)  # load the table's index from file into memory
-        table_index = active_table_indexes[table_name]
+        table_index = self.active_table_indexes[table_name]
+        file_offset = table_index[(address.pagerange, address.page)]
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
         with open(filename, "rb") as file:
             file.seek(file_offset)
@@ -156,7 +185,7 @@ class DiskManager:
         page_range_num = evict_page[0][1]
         page_num = evict_page[0][2]
         page = evict_page[1]
-        table_index = active_table_indexes[table_name]
+        table_index = self.active_table_indexes[table_name]
         file_offset = table_index[(page_range_num, page_num)]
 
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data

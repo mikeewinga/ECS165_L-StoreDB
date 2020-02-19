@@ -7,7 +7,6 @@ Table class needs an b tree to show which page range it should
 operate on
 Index class needs to be updated to store page range index along
 with the currently saved index
-    Amber suggested a new class to make index more readable
 """
 class PageRange:
 
@@ -97,7 +96,7 @@ class PageRange:
             # get next RID from indirection column
             next = self.pages[address.page].read(address.row)
             next = int.from_bytes(next, byteorder = "big")
-        
+
         return record_wanted
 
     def update(self, base_rid, tail_schema, record, tid, time):
@@ -150,4 +149,3 @@ class PageRange:
             # get next RID from indirection column
             next = self.pages[address.page].read(address.row)
             next = int.from_bytes(next, byteorder = "big")
-        

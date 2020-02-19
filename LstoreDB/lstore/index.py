@@ -51,7 +51,7 @@ class Index:
         # number of pages needed for index
         numIndexPages = self.table.current_Rid_base // RANGESIZE
 
-        # for every record, map the key of given column number to RID and save in dictionary 
+        # for every record, map the key of given column number to RID and save in dictionary
         step = NUM_METADATA_COLUMNS + self.table.num_columns
         for i in range(0, numIndexPages+1):
             for j in range(0,self.table.pageranges[i].bOffSet+1,step):
@@ -84,7 +84,7 @@ class Index:
         if self.indexDict.get(RID):
             return self.indexDict[RID]
         return 0
-        
+
     """
     deletes record from index
     """
@@ -108,7 +108,7 @@ class Address:
         self.pagerange = pagerange
         self.page = (flag, pagenumber)
         self.row = row
-        
+
     def __add__(self, offset):
         ret = (self.page[0],self.page[1]+offset)
         return ret
