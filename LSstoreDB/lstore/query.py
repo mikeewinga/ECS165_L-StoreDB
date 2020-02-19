@@ -10,8 +10,6 @@ class Query:
     def __init__(self, table):
         self.table = table
         self.index = Index(table)
-        #self.index.create_index(table.key)
-        pass
 
     """
     Deletes key from database and index
@@ -29,9 +27,8 @@ class Query:
     """
 
     def insert(self, *columns):
-        schema_encoding = 0  # schema is 0 since no columns are updated yet
         record = Record(self.table.current_Rid_base, self.table.key, columns)
-        self.table.insert(schema_encoding, record)
+        self.table.insert(record)
 
     """
     # Read columns from a record with specified key

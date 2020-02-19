@@ -30,7 +30,7 @@ class PageRange:
             self.pages[(1,x)] = Page()
 
     #pass in rid from table
-    def insert(self, schema, record, rid, time):
+    def insert(self, record, rid, time):
         address = Address(self.prid, 0, self.bOffSet, self.pages[(0,self.bOffSet)].num_records)
         self.index.write(rid, address)
         #indirection initialized to 0
@@ -40,7 +40,7 @@ class PageRange:
         #get and write time stamp
         self.pages[address+TIMESTAMP_COLUMN].write(time)
         #write schema passed in from table
-        self.pages[address+SCHEMA_ENCODING_COLUMN].write(schema)
+        self.pages[address+SCHEMA_ENCODING_COLUMN].write(0)
         #write base rid 0 for base pages
         self.pages[address+BASE_RID_COLUMN].write(0)
         for x in range(self.num_columns):
