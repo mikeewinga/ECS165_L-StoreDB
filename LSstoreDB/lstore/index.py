@@ -15,9 +15,13 @@ class Index:
     -- base=0 tail=1
     """
     def __init__(self, table=None):
+        self.table = None
         if not table is None:
             self.table = table
-        self.indexDict = {}
+            self.hasIndex = [0]*table.num_columns
+            self.indexDict = [{}]*table.num_columns
+        else:
+            self.indexDict = {}
         pass
 
     """
@@ -29,8 +33,8 @@ class Index:
 
     def locate(self, column, value):
         intList = [] # saves the RID's of matching records
-        if self.indexDict.get(value):  # check if given key exists in indexDict
-            byteList =  self.indexDict[value]
+        if self.indexDict[column].get(value):  # check if given key exists in indexDict
+            byteList =  self.indexDict[column][value]
             # convert byte format to RID numbers
             for x in byteList:
                 intList.append(int.from_bytes(x,byteorder='big',signed=False))
@@ -48,23 +52,28 @@ class Index:
     """
 
     def create_index(self, column_number):
+        if self.hasIndex[column_number]:
+            return
+        else:
+            self.hasIndex[column_number] = 1
         # number of pages needed for index
         numIndexPages = self.table.current_Rid_base // RANGESIZE
-
         # for every record, map the key of given column number to RID and save in dictionary 
         step = NUM_METADATA_COLUMNS + self.table.num_columns
+        query_columns = [0] * self.table.num_columns
+        query_columns[column_number] = 1
         for i in range(0, numIndexPages+1):
             for j in range(0,self.table.pageranges[i].bOffSet+1,step):
-                print(i, j)
-                keyPage = self.table.pageranges[i].pages[(0, NUM_METADATA_COLUMNS+column_number+j)]
+                keyPage = self.table.pageranges[i].pages[(0, NUM_METADATA_COLUMNS+j)]
                 ridPage = self.table.pageranges[i].pages[(0, 1+j)]
-                for x in range(0, keyPage.num_records):
-                    key = int.from_bytes(keyPage.read(x),byteorder='big',signed=False)
-                    F = self.indexDict.get(key)
+                for x in range(0, ridPage.num_records):
+                    key = self.table.return_record(int.from_bytes(ridPage.read(x),byteorder='big',signed=False), query_columns)[column_number]
+                    print(key)
+                    F = self.indexDict[column_number].get(key)
                     if F != None:
                         F = F.append(ridPage.read(x))
                     else:
-                        self.indexDict[key] = [ridPage.read(x)]
+                        self.indexDict[column_number][key] = [ridPage.read(x)]
         pass
 
     """
@@ -88,10 +97,15 @@ class Index:
     """
     deletes record from index
     """
-    def delete(self, RID):
-        if self.indexDict.get(RID):
-            del self.indexDict[RID]
-            return 1
+    def delete(self, RID, column_number=0):
+        if self.table:
+            if self.indexDict[column_number].get(RID):
+                del self.indexDict[column_number][RID]
+                return 1
+        else:
+            if self.indexDict.get(RID):
+                del self.indexDict[RID]
+                return 1
         return 0
 
     """

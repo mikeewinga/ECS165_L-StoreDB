@@ -10,7 +10,7 @@ class Query:
     def __init__(self, table):
         self.table = table
         self.index = Index(table)
-        self.hasIndex = 0
+        #self.index.create_index(table.key)
         pass
 
     """
@@ -18,7 +18,7 @@ class Query:
     """
     def delete(self, key):
         rid = self.index.locate(0, key)
-        self.index.delete(key)
+        self.index.delete(key, self.table.key)
         self.table.delete(rid[0])
         
 
@@ -41,9 +41,7 @@ class Query:
 
     def select(self, key, column, query_columns):
         # create index for column if needed
-        if (self.hasIndex == 0) :
-            self.index.create_index(self.table.key)
-            self.hasIndex = 1
+        self.index.create_index(column)
         rid = self.index.locate(0, key)
         record_set = []
         for item in rid:
@@ -59,9 +57,7 @@ class Query:
 
     def update(self, key, *columns):
         # create index for column if needed
-        if (self.hasIndex == 0) :
-            self.index.create_index(self.table.key)
-            self.hasIndex = 1
+        self.index.create_index(self.table.key)
         if len(columns) < 1:
             return
         # create bitmap for schema encoding with 1 in the position of updated column
@@ -84,9 +80,7 @@ class Query:
 
     def sum(self, start_range, end_range, aggregate_column_index):
         # create index for column if needed
-        if (self.hasIndex == 0) :
-            self.index.create_index(self.table.key)
-            self.hasIndex = 1
+        self.index.create_index(self.table.key)
         sum = 0
         column_agg =[]
         # create a list of 0's and 1 where 1 is in the position of aggregate column
