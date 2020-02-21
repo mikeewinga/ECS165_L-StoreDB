@@ -24,6 +24,9 @@ class Bufferpool:
     def is_full(self):
         return len(self.page_map) == BUFFERPOOL_SIZE
 
+    def is_empty(self):
+        return len(self.page_map) == 0
+
     """
     -maps to the actual Page in pool
     -then goes to the record offset and reads it
@@ -62,12 +65,9 @@ class Bufferpool:
         self.page_map.move_to_end((table_name, address.page_range, address.page))
 
 
-
 class DiskManager:
     """
     TO-DO list:
-    -FIXME also file_offset--is this in terms of page numbers, so need to multiply by 4096 to get byte offset?
-        or already in terms of bytes?
     -check that bufferpool LRU eviction thing works
     -alternative to directly modifying PageRange class: make a new wrapper Page class for Pagerange to use so that I don't have to change all the pagerange code
         in that new class, call DiskManager and pass in the page's conceptual address
@@ -192,11 +192,11 @@ class DiskManager:
         with open(filename, "r+b") as file:  # open file for writing without wiping the file contents
             file.seek(file_offset)
             file.write(page.data)
-        pass
 
     """
     FIXME when should we call this function?
         need to flush the index to file when table isn't active anymore--how to detect that?
+    Also, note that this function doesn't delete the entry from dictionary, just flushes it to disk
     """
     def flush_index(self, table_name):
         table_index = self.active_table_indexes[table_name]
@@ -208,4 +208,16 @@ class DiskManager:
                     + str(address_tuple[1][1]) + " "
                     + str(table_index[address_tuple]) + "\n"
                 file.write(index_line)
-        del self.active_table_indexes[table_name]
+        # del self.active_table_indexes[table_name]
+
+    def close(self):
+        # empty the bufferpool
+        while (!self.bufferpool.is_empty()):
+            # evict page and flush it to disk if dirty
+            evict_page = self.bufferpool.evict()
+            if (evict_page[1].dirty):
+                self.flush_page(evict_page)
+        # flush the table indexes to config files and then clear dictionary of indexes
+        for table_name in self.active_table_indexes.keys():
+            self.flush_index(table_name)
+        self.active_table_indexes.clear()
