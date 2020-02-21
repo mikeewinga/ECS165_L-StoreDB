@@ -96,20 +96,20 @@ class DiskManager:
 
     def new_page(self, table_name, total_columns, address):
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
-        filesize = path.getsize(filename)
+        orig_filesize = path.getsize(filename)
         with open(filename, "r+b") as file:
             # check if last page slot isn't empty -> means the column block is full
                 # and we have to allocate new column blocks
-            file_offset = filesize - PAGESIZE  # get offset of last page slot
+            file_offset = orig_filesize - PAGESIZE  # get offset of last page slot
             file.seek(file_offset)
             last_page_TPS = file.read(DATASIZE)
-            if (last_page_TPS != 0):
+            if (last_page_TPS != 0):  # if tps isn't 0, then the page has already been allocated
                 # append whitespace for new set of column blocks to end of file here
-                file.seek(filesize)
+                file.seek(orig_filesize)
                 file.write(bytearray(PAGESIZE * COLUMN_BLOCK_PAGES * total_columns))
-                file_offset = filesize  # reset file_offset to start of new set of column blocks
-            else:
-                file_offset = filesize - (PAGESIZE * COLUMN_BLOCK_PAGES * total_columns) # get offset of first page slot in last set of column blocks
+                file_offset = orig_filesize  # reset file_offset to start of new set of column blocks
+            else:  # there is still empty space in last set of column blocks
+                file_offset = orig_filesize - (PAGESIZE * COLUMN_BLOCK_PAGES * total_columns) # get offset of first page slot in last set of column blocks
                 file.seek(file_offset)
                 page_TPS = file.read(DATASIZE)
                 while (page_TPS != 0):  # manually search column block until empty space is found
