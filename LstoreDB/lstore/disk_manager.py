@@ -127,7 +127,6 @@ class DiskManager:
                 table_index[(address.pagerange, address.page)] = file_offset  # add mapping from conceptual address to file offset to table index
                 # also load the new page into bufferpool
                 in_memory_pg = Page()
-                in_memory_pg.write(init_TPS_bytes)
                 self.bufferpool.add_page(table_name, address, in_memory_pg)
                 file_offset += (PAGESIZE * COLUMN_BLOCK_PAGES)
 
