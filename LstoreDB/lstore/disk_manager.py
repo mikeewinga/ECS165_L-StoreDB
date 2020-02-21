@@ -6,7 +6,7 @@ from lstore.index import Address
 
 BIN_EXTENSION = ".bin"
 INDEX_EXTENSION = "_index.txt"
-COLUMN_BLOCK_PAGES = 10
+COLUMN_BLOCK_BYTES = PAGESIZE * COLUMN_BLOCK_PAGES
 
 class Bufferpool:
     def __init__(self):
@@ -94,45 +94,40 @@ class DiskManager:
         else:
             return False
 
-    def new_page(self, table_name, total_columns, address):
+    def new_page(self, table_name, total_columns, address, column_index):
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
         orig_filesize = path.getsize(filename)
+        column_set_size = COLUMN_BLOCK_BYTES * total_columns
+        file_offset = orig_filesize - column_set_size + (COLUMN_BLOCK_BYTES * column_index)
+
         with open(filename, "r+b") as file:
-            # check if last page slot isn't empty -> means the column block is full
-                # and we have to allocate new column blocks
-            file_offset = orig_filesize - PAGESIZE  # get offset of last page slot
-            file.seek(file_offset)
-            last_page_TPS = file.read(DATASIZE)
-            if (last_page_TPS != 0):  # if tps isn't 0, then the page has already been allocated
-                # append whitespace for new set of column blocks to end of file here
-                file.seek(orig_filesize)
-                file.write(bytearray(PAGESIZE * COLUMN_BLOCK_PAGES * total_columns))
-                file_offset = orig_filesize  # reset file_offset to start of new set of column blocks
-            else:  # there is still empty space in last set of column blocks
-                file_offset = orig_filesize - (PAGESIZE * COLUMN_BLOCK_PAGES * total_columns) # get offset of first page slot in last set of column blocks
+            block_full = True
+            for i in range(COLUMN_BLOCK_PAGES):
                 file.seek(file_offset)
                 page_TPS = file.read(DATASIZE)
-                while (page_TPS != 0):  # manually search column block until empty space is found
-                    file_offset += PAGESIZE
-                    file.seek(file_offset)
-                    page_TPS = file.read(DATASIZE)
+                if (page_TPS == 0):
+                    block_full = False
+                    break
+                file_offset += PAGESIZE
+            if (block_full):
+                # append whitespace for new set of column blocks to end of file here
+                file.seek(orig_filesize)
+                file.write(bytearray(column_set_size))
+                file_offset = orig_filesize + (COLUMN_BLOCK_BYTES * column_index)  # reset file_offset to start of column block to modify
             # write the TPS = 2^64 - 1 for first entry in the new page, for each column block
                 # at the same time, add page mapping to table index
             init_TPS = 2**64 - 1
             init_TPS_bytes = init_TPS.to_bytes(8,byteorder = "big")
             table_index = self.active_table_indexes[table_name]
-            for i in range(total_columns):
-                file.seek(file_offset)
-                file.write(init_TPS_bytes)  # write TPS number
-                table_index[(address.pagerange, address.page)] = file_offset  # FIXME there might be bug here with page addressing ----- add mapping from conceptual address to file offset to table index
-                # also load the new page into bufferpool
-                in_memory_pg = Page()
-                self.bufferpool.add_page(table_name, address, in_memory_pg)
-                file_offset += (PAGESIZE * COLUMN_BLOCK_PAGES)
-
+            file.seek(file_offset)  # reset file position to start of blank page slot
+            file.write(init_TPS_bytes)  # write TPS number
+            table_index[(address.pagerange, address.page)] = file_offset  # add mapping from conceptual address to file offset to table index
+            # also load the new page into bufferpool
+            in_memory_pg = Page()
+            self.bufferpool.add_page(table_name, address, in_memory_pg)
 
     def delete_page(self, table_name, base_tail, page_num):
-        pass #FIXME
+        pass #FIXME set TPS to 1 for the page to mark as deleted
 
     def read(self, table_name, address):
         if (!self.bufferpool.contains_page(table_name, address)):
