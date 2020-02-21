@@ -5,11 +5,12 @@ class Page:
     def __init__(self, bytes = None):
         self.num_records = 0
         self.dirty = False
+        self.pinned = False
         if (bytes != None):
             self.data = bytearray(bytes)
         else:
             self.data = bytearray(PAGESIZE)
-        self.write(2**64 - 1)  # fill up first record slot with TPS number 
+        self.write(2**64 - 1)  # fill up first record slot with TPS number
 
     """
     Checks if there is space left in page

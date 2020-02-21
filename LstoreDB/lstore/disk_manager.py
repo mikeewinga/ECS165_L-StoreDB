@@ -124,7 +124,7 @@ class DiskManager:
             for i in range(total_columns):
                 file.seek(file_offset)
                 file.write(init_TPS_bytes)  # write TPS number
-                table_index[(address.pagerange, address.page)] = file_offset  # add mapping from conceptual address to file offset to table index
+                table_index[(address.pagerange, address.page)] = file_offset  # FIXME there might be bug here with page addressing ----- add mapping from conceptual address to file offset to table index
                 # also load the new page into bufferpool
                 in_memory_pg = Page()
                 self.bufferpool.add_page(table_name, address, in_memory_pg)
