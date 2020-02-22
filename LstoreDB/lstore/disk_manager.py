@@ -32,22 +32,32 @@ class Bufferpool:
     -then goes to the record offset and reads it
     """
     def read(self, table_name, address):
+        self.pin_page(table_name, address)  # note that this would be critical section in multithreading
         page = self.page_map[(table_name, address.page_range, address.page)]
         self.page_map.move_to_end((table_name, address.page_range, address.page))
-        return page.read(address.row)
+        read_value = page.read(address.row)
+        self.unpin_page(table_name, address)
+        return read_value
 
     def append_write(self, table_name, address, value):
+        self.pin_page(table_name, address)  # note that this would be critical section in multithreading
         page = self.page_map[(table_name, address.page_range, address.page)]
         page.write(value)
         page.dirty = True
         self.page_map.move_to_end((table_name, address.page_range, address.page))
+        self.unpin_page(table_name, address)
 
     def overwrite(self, table_name, address, value):
+        self.pin_page(table_name, address)  # note that this would be critical section in multithreading
         page = self.page_map[(table_name, address.page_range, address.page)]
         page.overwrite_record(address.row, value)
         page.dirty = True
         self.page_map.move_to_end((table_name, address.page_range, address.page))
+        self.unpin_page(table_name, address)
 
+    """
+    FIXME do we need this function?
+    """
     def delete(self, table_name, address):
         page = self.page_map[(table_name, address.page_range, address.page)]
         del self.page_map[(table_name, address.page_range, address.page)]
@@ -58,11 +68,26 @@ class Bufferpool:
     """
     def evict(self):
         # popItem pops and returns (key, value) in FIFO order with False arg
-        return self.page_map.popItem(False)
+        address_to_page = self.page_map.popItem(False)
+        table_name = address_to_page[0][0]
+        page_range_num = address_to_page[0][1]
+        page_num = address_to_page[0][2]
+        page = address_to_page[1]
+        if (page.pin_count > 0):  # page is in use
+            self.page_map[(table_name, page_range_num, page_num)] = page  # re-add the page back into dictionary
+            return ()
+        else:
+            return address_to_page
 
     def add_page(self, table_name, address, page):
         self.page_map[(table_name, address.page_range, address.page)] = page
-        self.page_map.move_to_end((table_name, address.page_range, address.page))
+        # self.page_map.move_to_end((table_name, address.page_range, address.page))
+
+    def pin_page(self, table_name, address):
+        self.page_map[(table_name, address.page_range, address.page)].pin_count += 1
+
+    def unpin_page(self, table_name, address):
+        self.page_map[(table_name, address.page_range, address.page)].pin_count -= 1
 
 
 class DiskManager:
@@ -152,6 +177,8 @@ class DiskManager:
         if (self.bufferpool.is_full()):
             # evict page and flush it to disk if dirty
             evict_page = self.bufferpool.evict()
+            while (!evict_page):
+                evict_page = self.bufferpool.evict()
             if (evict_page[1].dirty):
                 self.flush_page(evict_page)
 

@@ -5,7 +5,7 @@ class Page:
     def __init__(self, bytes = None):
         self.num_records = 0
         self.dirty = False
-        self.pinned = False
+        self.pin_count = 0
         if (bytes != None):
             self.data = bytearray(bytes)
         else:

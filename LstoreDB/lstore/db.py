@@ -1,4 +1,5 @@
 from lstore.table import Table
+from lstore.disk_manager import DiskManager
 
 class Database():
 
@@ -8,6 +9,8 @@ class Database():
         pass
 
     def open(self, path):
+        global HD
+        HD = DiskManager(path)
         pass
 
     def close(self):
@@ -23,7 +26,7 @@ class Database():
         table = Table(name, key, num_columns)
         self.tables[name] = table
         self.num_tables = self.num_tables + 1
-        return table 
+        return table
 
     """
     # Deletes the specified table
