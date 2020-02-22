@@ -6,14 +6,15 @@ class Database():
     def __init__(self):
         self.tables = {}  # maps {string name : Table}
         self.num_tables = 0
+        self.diskManager = DiskManager()
         pass
 
     def open(self, path):
-        global HD
-        HD = DiskManager(path)
+        self.diskManager.set_directory_path(path)
         pass
 
     def close(self):
+        self.diskManager.close()
         pass
 
     """

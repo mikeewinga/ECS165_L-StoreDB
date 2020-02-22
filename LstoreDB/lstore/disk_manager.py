@@ -100,10 +100,13 @@ class DiskManager:
         -the old Page class will be in-memory page to use
     -if directly modify PageRange class, then need to add page_has_capacity function for PageRange to use
     """
-    def __init__(self, directory_path):
+    def __init__(self):
         self.bufferpool = Bufferpool()
-        self.directory_path = directory_path
+        self.directory_path = ""
         self.active_table_indexes = {}  # { string table_name : {address tuple (int page_range, (int base/tail, int page_num)) : file_offset_bytes }}
+
+    def set_directory_path(self, directory_path):
+        self.directory_path = directory_path
 
     def new_table(self, table_name, total_columns):
         filename = self.directory_path + table_name + BIN_EXTENSION  # binary file for table data
@@ -221,9 +224,7 @@ class DiskManager:
             file.write(page.data)
 
     """
-    FIXME when should we call this function?
-        need to flush the index to file when table isn't active anymore--how to detect that?
-    Also, note that this function doesn't delete the entry from dictionary, just flushes it to disk
+    note that this function doesn't delete the entry from dictionary, just flushes it to disk
     """
     def flush_index(self, table_name):
         table_index = self.active_table_indexes[table_name]
