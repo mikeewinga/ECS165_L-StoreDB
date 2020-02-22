@@ -177,7 +177,7 @@ class DiskManager:
         if (self.bufferpool.is_full()):
             # evict page and flush it to disk if dirty
             evict_page = self.bufferpool.evict()
-            while (!evict_page):
+            while (len(evict_page) == 0):
                 evict_page = self.bufferpool.evict()
             if (evict_page[1].dirty):
                 self.flush_page(evict_page)
