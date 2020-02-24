@@ -3,6 +3,7 @@ from os import path
 
 from lstore.config import *
 from lstore.index import Address
+from lstore.page import Page
 
 BIN_EXTENSION = ".bin"
 INDEX_EXTENSION = "_index.txt"
@@ -56,7 +57,7 @@ class Bufferpool:
         self.unpin_page(table_name, address)
 
     def page_has_capacity(self, table_name, address):
-        return page_map[(table_name, address.page_range, address.page)].has_capacity()
+        return self.page_map[(table_name, address.page_range, address.page)].has_capacity()
 
     """
     FIXME do we need this function?
@@ -128,8 +129,8 @@ class DiskManager:
             return False
 
     def open_table_file(self, table_name):
-        if path.exists(self.directory_path + table_name + INDEX_EXTENSION) and
-        path.exists(self.directory_path + table_name + BIN_EXTENSION):
+        if path.exists(self.directory_path + table_name + INDEX_EXTENSION)\
+                and path.exists(self.directory_path + table_name + BIN_EXTENSION):
             #load the index into active_table_indexes
             self.load_index_from_disk(table_name)
             return self.active_table_metadata[table_name]
@@ -209,7 +210,7 @@ class DiskManager:
                 self.flush_page(evict_page)
 
         # then locate page from disk and copy, save in Page() object, then add to buffer pool
-        if table_name not in active_table_indexes:
+        if table_name not in self.active_table_indexes:
             self.load_index_from_disk(table_name)  # load the table's index from file into memory
         table_index = self.active_table_indexes[table_name]
         file_offset = table_index[(address.pagerange, address.page)]
@@ -264,10 +265,10 @@ class DiskManager:
             file.write(str(table_metadata[COLUMNS]) + "\n")
             # copy the index into file
             for address_tuple in table_index:
-                index_line = str(address_tuple[0]) + " "
-                + str(address_tuple[1][0]) + " "
-                + str(address_tuple[1][1]) + " "
-                + str(table_index[address_tuple]) + "\n"
+                index_line = str(address_tuple[0]) + " "\
+                             + str(address_tuple[1][0]) + " "\
+                             + str(address_tuple[1][1]) + " "\
+                             + str(table_index[address_tuple]) + "\n"
                 file.write(index_line)
         # del self.active_table_indexes[table_name]
 
