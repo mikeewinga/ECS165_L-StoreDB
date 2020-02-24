@@ -1,8 +1,8 @@
 from collections import OrderedDict
-from os import path
+import os
 
 from lstore.config import *
-from lstore.index import Address
+#from lstore.index import Address
 from lstore.page import Page
 
 BIN_EXTENSION = ".bin"
@@ -14,7 +14,6 @@ class Bufferpool:
         self.max_pages = BUFFERPOOL_SIZE
         # { (string table_name, int page_range, (int base/tail, int page_num)) : Page() }
         self.page_map = OrderedDict()
-        #FIXME add active tables hash set?
 
     def contains_page(self, table_name, address):
         if (table_name, address.page_range, address.page) in self.page_map:
@@ -111,7 +110,13 @@ class DiskManager:
         self.active_table_metadata = {}  # { string table_name: (int primary key index, int num_total_columns) }
 
     def set_directory_path(self, directory_path):
-        self.directory_path = directory_path
+        self.directory_path = directory_path + "/"
+        try:
+            os.makedirs(directory_path)
+        except OSError:
+            print("Creation of the directory %s failed" % directory_path)
+        else:
+            print("Successfully created the directory %s " % directory_path)
 
     """
     :param primary_key: index of primary user column
@@ -129,8 +134,8 @@ class DiskManager:
             return False
 
     def open_table_file(self, table_name):
-        if path.exists(self.directory_path + table_name + INDEX_EXTENSION)\
-                and path.exists(self.directory_path + table_name + BIN_EXTENSION):
+        if os.path.exists(self.directory_path + table_name + INDEX_EXTENSION)\
+                and os.path.exists(self.directory_path + table_name + BIN_EXTENSION):
             #load the index into active_table_indexes
             self.load_index_from_disk(table_name)
             return self.active_table_metadata[table_name]
@@ -143,7 +148,7 @@ class DiskManager:
     """
     def new_page(self, table_name, total_columns, address, column_index):
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
-        orig_filesize = path.getsize(filename)
+        orig_filesize = os.path.getsize(filename)
         column_set_size = COLUMN_BLOCK_BYTES * total_columns
         file_offset = orig_filesize - column_set_size + (COLUMN_BLOCK_BYTES * column_index)
 

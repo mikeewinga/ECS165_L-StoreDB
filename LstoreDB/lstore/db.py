@@ -1,5 +1,6 @@
 from lstore.table import Table
 from lstore.disk_manager import DiskManager
+from lstore.config import *
 
 class Database():
 
