@@ -35,7 +35,7 @@ class Table:
     :param num_columns: int     #Number of Columns: all columns are integer
     :param key: int             #Index of table key in columns
     """
-    def __init__(self, name, key, num_columns):
+    def __init__(self, name, key, num_columns, diskManager):
         self.name = name
         self.key = key
         self.num_columns = num_columns
@@ -47,6 +47,7 @@ class Table:
         self.pageranges = {}
         self.pageranges[0] = PageRange(0, self.current_Rid_base, num_columns)
         self.index = PageDirectory()
+        self.diskManager = diskManager
         pass
 
     def get_timestamp(self):
@@ -98,7 +99,7 @@ class Table:
         prid = self.index.read(base_rid)
         self.pageranges[prid].update(base_rid, tail_schema, record, self.current_Rid_tail, self.get_timestamp())
         self.current_Rid_tail = self.current_Rid_tail - 1
-        
+
     def delete(self, base_rid):
         prid = self.index.read(base_rid)
         self.index.delete(base_rid)

@@ -8,6 +8,11 @@ BIN_EXTENSION = ".bin"
 INDEX_EXTENSION = "_index.txt"
 COLUMN_BLOCK_BYTES = PAGESIZE * COLUMN_BLOCK_PAGES
 
+# tuple indexing for table metadata
+PRIMARY_KEY = 0
+COLUMNS = 1
+
+
 class Bufferpool:
     def __init__(self):
         self.max_pages = BUFFERPOOL_SIZE
@@ -54,6 +59,9 @@ class Bufferpool:
         page.dirty = True
         self.page_map.move_to_end((table_name, address.page_range, address.page))
         self.unpin_page(table_name, address)
+
+    def page_has_capacity(self, table_name, address):
+        return page_map[(table_name, address.page_range, address.page)].has_capacity()
 
     """
     FIXME do we need this function?
@@ -104,17 +112,27 @@ class DiskManager:
         self.bufferpool = Bufferpool()
         self.directory_path = ""
         self.active_table_indexes = {}  # { string table_name : {address tuple (int page_range, (int base/tail, int page_num)) : file_offset_bytes }}
+        self.active_table_metadata = {}  # { string table_name: (int primary key index, int num_total_columns) }
 
     def set_directory_path(self, directory_path):
         self.directory_path = directory_path
 
-    def new_table(self, table_name, total_columns):
-        filename = self.directory_path + table_name + BIN_EXTENSION  # binary file for table data
-        with open(filename, "x") as file: pass  # Creates file
-        filename = self.directory_path + table_name + INDEX_EXTENSION  # index/config file for table
-        with open(filename, "x") as file: pass
+    """
+    :param primary_key: index of primary user column
+    """
+    def new_table_file(self, table_name, primary_key, num_user_columns):
+        try:
+            filename = self.directory_path + table_name + BIN_EXTENSION  # binary file for table data
+            with open(filename, "x") as file: pass  # Creates file
+            filename = self.directory_path + table_name + INDEX_EXTENSION  # index/config file for table
+            with open(filename, "x") as file:
+                file.write(str(primary_key) + "\n")  # save primary key column number
+                file.write(str(num_user_columns + NUM_METADATA_COLUMNS) + "\n")  # save total number of columns
+            return True
+        except FileExistsError:
+            return False
 
-    def open_table(self, table_name):
+    def open_table_file(self, table_name):
         if path.exists(self.directory_path + table_name):
             #load the index into active_table_indexes
             self.load_index_from_disk(table_name)
@@ -122,6 +140,10 @@ class DiskManager:
         else:
             return False
 
+    """
+    FIXME is total_columns parameter needed? If I store total_columns as metadata, then
+    I should be able to retrieve it based on table_name
+    """
     def new_page(self, table_name, total_columns, address, column_index):
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
         orig_filesize = path.getsize(filename)
@@ -158,19 +180,24 @@ class DiskManager:
         pass #FIXME set TPS to 1 for the page to mark as deleted
 
     def read(self, table_name, address):
-        if (!self.bufferpool.contains_page(table_name, address)):
+        if (not self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
         return self.bufferpool.read(table_name, address)
 
     def append_write(self, table_name, address, value):
-        if (!self.bufferpool.contains_page(table_name, address)):
+        if (not self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
         self.bufferpool.append_write(table_name, address, value)
 
     def overwrite(self, table_name, address, value):
-        if (!self.bufferpool.contains_page(table_name, address)):
+        if (not self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
         self.bufferpool.overwrite(table_name, address, value)
+
+    def page_has_capacity(self, table_name, address):
+        if (not self.bufferpool.contains_page(table_name, address)):
+            self.load_page_from_disk(table_name, address)
+        return self.bufferpool.page_has_capacity(table_name, address)
 
     """
     evict a page if needed before locating file in memory
@@ -201,6 +228,10 @@ class DiskManager:
         index_filename = self.directory_path + table_name + INDEX_EXTENSION
         self.active_table_indexes[table_name] = {}
         with open(index_filename, "r") as file:
+            # read primary key index and num columns metadata
+            primary_key = next(file)
+            num_total_columns = next(file)
+            self.active_table_metadata[table_name] = (primary_key, num_total_columns)
             # split each line in file and save as key-value pairs in dictionary index
             for line in file:
                 (page_range_num, base_tail, page_num, file_offset) = line.split()
@@ -226,26 +257,32 @@ class DiskManager:
     """
     note that this function doesn't delete the entry from dictionary, just flushes it to disk
     """
-    def flush_index(self, table_name):
+    #FIXME
+    def flush_index_metadata(self, table_name):
+        table_metadata = self.active_table_metadata[table_name]
         table_index = self.active_table_indexes[table_name]
         filename = self.directory_path + table_name + INDEX_EXTENSION # file for table index
         with open(filename, "w") as file:  # open file and wipe the contents, then rewrite everything
+            # copy the metadata into file
+            file.write(str(table_metadata[PRIMARY_KEY]) + "\n")
+            file.write(str(table_metadata[COLUMNS]) + "\n")
+            # copy the index into file
             for address_tuple in table_index:
                 index_line = str(address_tuple[0]) + " "
-                    + str(address_tuple[1][0]) + " "
-                    + str(address_tuple[1][1]) + " "
-                    + str(table_index[address_tuple]) + "\n"
+                + str(address_tuple[1][0]) + " "
+                + str(address_tuple[1][1]) + " "
+                + str(table_index[address_tuple]) + "\n"
                 file.write(index_line)
         # del self.active_table_indexes[table_name]
 
     def close(self):
         # empty the bufferpool
-        while (!self.bufferpool.is_empty()):
+        while (not self.bufferpool.is_empty()):
             # evict page and flush it to disk if dirty
             evict_page = self.bufferpool.evict()
             if (evict_page[1].dirty):
                 self.flush_page(evict_page)
         # flush the table indexes to config files and then clear dictionary of indexes
         for table_name in self.active_table_indexes.keys():
-            self.flush_index(table_name)
+            self.flush_index_metadata(table_name)
         self.active_table_indexes.clear()
