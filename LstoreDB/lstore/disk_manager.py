@@ -132,7 +132,7 @@ class DiskManager:
         path.exists(self.directory_path + table_name + BIN_EXTENSION):
             #load the index into active_table_indexes
             self.load_index_from_disk(table_name)
-            return (self.active_table_metadata[table_name])
+            return self.active_table_metadata[table_name]
         else:
             return ()
 

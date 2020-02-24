@@ -45,7 +45,7 @@ class Table:
         self.current_Rid_tail = 2**64 - 1
         self.current_Prid = 0
         self.pageranges = {}
-        self.pageranges[0] = PageRange(0, self.current_Rid_base, num_columns)
+        self.pageranges[0] = PageRange(self.name, 0, self.current_Rid_base, num_columns, diskManager)
         self.index = PageDirectory()
         self.diskManager = diskManager
         pass
@@ -65,7 +65,7 @@ class Table:
         prid = self.current_Rid_base//RANGESIZE
         if prid > self.current_Prid:
             self.current_Prid = prid
-            self.pageranges[prid] = PageRange(prid, self.current_Rid_base, self.num_columns)
+            self.pageranges[prid] = PageRange(self.name, prid, self.current_Rid_base, self.num_columns, self.diskManager)
         self.pageranges[prid].insert(record, self.current_Rid_base, self.get_timestamp())
         self.index.write(self.current_Rid_base, prid)
         self.current_Rid_base = self.current_Rid_base + 1

@@ -10,7 +10,8 @@ with the currently saved index
 """
 class PageRange:
 
-    def __init__(self, prid, start, num_columns):
+    def __init__(self, table_name, prid, start, num_columns, diskManager):
+        self.table_name = table_name
         self.prid = prid
         self.tps = 2**64 - 1
         self.cur_tid = self.tps
@@ -24,6 +25,7 @@ class PageRange:
         self.index = PageDirectory()
         self.delete_queue = []
         self.pages = {}
+        self.diskManager = diskManager
         for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
             self.pages[(0,x)] = Page()
             self.pages[(1,x)] = Page()
