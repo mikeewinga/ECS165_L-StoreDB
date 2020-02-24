@@ -94,15 +94,6 @@ class Bufferpool:
 
 
 class DiskManager:
-    """
-    TO-DO list:
-    -check that bufferpool LRU eviction thing works
-    -alternative to directly modifying PageRange class: make a new wrapper Page class for Pagerange to use so that I don't have to change all the pagerange code
-        in that new class, call DiskManager and pass in the page's conceptual address
-        so that DiskManager can allocate new page or load into bufferpool, read, write etc.
-        -the old Page class will be in-memory page to use
-    -if directly modify PageRange class, then need to add page_has_capacity function for PageRange to use
-    """
     def __init__(self):
         self.bufferpool = Bufferpool()
         self.directory_path = ""
@@ -142,11 +133,6 @@ class DiskManager:
         else:
             return ()
 
-    """
-    FIXME is total_columns parameter needed? Assuming that the table file has
-     already been created, If I store total_columns as metadata, then
-    I should be able to retrieve it based on table_name
-    """
     def new_page(self, table_name, address, column_index):
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
         orig_filesize = os.path.getsize(filename)
