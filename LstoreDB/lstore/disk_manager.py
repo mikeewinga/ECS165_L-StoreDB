@@ -8,11 +8,6 @@ BIN_EXTENSION = ".bin"
 INDEX_EXTENSION = "_index.txt"
 COLUMN_BLOCK_BYTES = PAGESIZE * COLUMN_BLOCK_PAGES
 
-# tuple indexing for table metadata
-PRIMARY_KEY = 0
-COLUMNS = 1
-
-
 class Bufferpool:
     def __init__(self):
         self.max_pages = BUFFERPOOL_SIZE
@@ -133,12 +128,13 @@ class DiskManager:
             return False
 
     def open_table_file(self, table_name):
-        if path.exists(self.directory_path + table_name):
+        if path.exists(self.directory_path + table_name + INDEX_EXTENSION) and
+        path.exists(self.directory_path + table_name + BIN_EXTENSION):
             #load the index into active_table_indexes
             self.load_index_from_disk(table_name)
-            return True
+            return (self.active_table_metadata[table_name])
         else:
-            return False
+            return ()
 
     """
     FIXME is total_columns parameter needed? If I store total_columns as metadata, then

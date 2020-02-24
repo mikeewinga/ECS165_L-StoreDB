@@ -14,5 +14,9 @@ NUM_METADATA_COLUMNS=5
 
 COLUMN_BLOCK_PAGES = 10
 
+# tuple indexing for table metadata (primary_key, num_columns)
+PRIMARY_KEY = 0
+COLUMNS = 1
+
 def init():
     pass
