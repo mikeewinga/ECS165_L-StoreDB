@@ -27,8 +27,12 @@ class PageRange:
         self.pages = {}
         self.diskManager = diskManager
         for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
-            self.pages[(0,x)] = Page()
-            self.pages[(1,x)] = Page()
+            #self.pages[(0,x)] = Page()
+            #self.pages[(1,x)] = Page()
+            base_address = Address(self.prid, 0, x)
+            self.diskManager.new_page(self.table_name, base_address, x)
+            tail_address = Address(self.prid, 1, x)
+            self.diskManager.new_page(self.table_name, tail_address, x)
 
     #pass in rid from table
     def insert(self, record, rid, time):
@@ -46,10 +50,12 @@ class PageRange:
         self.pages[address+BASE_RID_COLUMN].write(0)
         for x in range(self.num_columns):
             self.pages[address+(x+NUM_METADATA_COLUMNS)].write(record.columns[x])
+        # expand new base pages if needed
         if not self.pages[address.page].has_capacity():
             self.bOffSet = self.bOffSet + self.num_columns + NUM_METADATA_COLUMNS
             for x in range(self.num_columns + NUM_METADATA_COLUMNS):
-                self.pages[(0,x + self.bOffSet)] = Page()
+                base_address = Address(self.prid, 0, x + self.bOffSet)
+                self.diskManager.new_page(self.table_name, base_address, x)
 
 
     def getOffset(self, schema, col_num):
@@ -123,7 +129,8 @@ class PageRange:
         if not self.pages[address.page].has_capacity():
             self.tOffSet = self.tOffSet + self.num_columns + NUM_METADATA_COLUMNS
             for x in range(self.num_columns + NUM_METADATA_COLUMNS):
-                self.pages[(1,x + self.tOffSet)] = Page()
+                tail_address = Address(self.prid, 1, x + self.tOffSet)
+                self.diskManager.new_page(self.table_name, tail_address, x)
 
         # set base record indirection to rid of new tail record
         self.pages[bAddress+INDIRECTION_COLUMN].overwrite_record(bAddress.row, tid)

@@ -143,12 +143,14 @@ class DiskManager:
             return ()
 
     """
-    FIXME is total_columns parameter needed? If I store total_columns as metadata, then
+    FIXME is total_columns parameter needed? Assuming that the table file has
+     already been created, If I store total_columns as metadata, then
     I should be able to retrieve it based on table_name
     """
-    def new_page(self, table_name, total_columns, address, column_index):
+    def new_page(self, table_name, address, column_index):
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
         orig_filesize = os.path.getsize(filename)
+        total_columns = self.active_table_metadata[table_name][COLUMNS]
         column_set_size = COLUMN_BLOCK_BYTES * total_columns
         file_offset = orig_filesize - column_set_size + (COLUMN_BLOCK_BYTES * column_index)
 
@@ -259,7 +261,6 @@ class DiskManager:
     """
     note that this function doesn't delete the entry from dictionary, just flushes it to disk
     """
-    #FIXME
     def flush_index_metadata(self, table_name):
         table_metadata = self.active_table_metadata[table_name]
         table_index = self.active_table_indexes[table_name]

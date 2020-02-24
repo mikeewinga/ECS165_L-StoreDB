@@ -131,7 +131,7 @@ class PageDirectory:
 
 class Address:
     #Base/Tail flag, Page-range number, Page number, Row number
-    def __init__(self, pagerange, flag, pagenumber, row):
+    def __init__(self, pagerange, flag, pagenumber, row = None):
         self.pagerange = pagerange
         self.flag = flag
         self.pagenumber = pagenumber
