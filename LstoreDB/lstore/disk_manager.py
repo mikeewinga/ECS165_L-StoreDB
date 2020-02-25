@@ -167,7 +167,9 @@ class DiskManager:
             table_index = self.active_table_indexes[table_name]
             file.seek(file_offset)  # reset file position to start of blank page slot
             file.write(init_TPS_bytes)  # write TPS number
-            table_index[(address.pagerange, address.page)] = [file_offset, 0]  # add to table index the mapping from conceptual address to file offset + num_records
+            # add to table index the mapping from conceptual address to file offset + num_records
+            # -- note that num_records is initially 1 because the TPS is first data entry
+            table_index[(address.pagerange, address.page)] = [file_offset, 1]
             # also load the new page into bufferpool
             in_memory_pg = Page()
             self.bufferpool.add_page(table_name, address, in_memory_pg)

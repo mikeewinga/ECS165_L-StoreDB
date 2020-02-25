@@ -44,9 +44,9 @@ class Query:
         rid = self.index.locate(column, key)
         record_set = []
         for item in rid:
-            item_I = int.from_bytes(item, byteorder = "big")
-            record_set.append(Record(item_I, key,
-            self.table.return_record(item_I, query_columns)))
+            #item_I = int.from_bytes(item, byteorder = "big")
+            record_set.append(Record(item, key,
+            self.table.return_record(item, query_columns)))
         return record_set
 
     """
