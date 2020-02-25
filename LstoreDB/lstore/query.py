@@ -69,13 +69,14 @@ class Query:
                 schema_encoding = schema_encoding + bit
             bit = bit // 2
         #get corresponding rid from key
-        rid = self.index.locate(self.table.key, key)
-        ridr = int.from_bytes(rid[0], byteorder = "big")
-        self.index.update(rid[0], self.table.return_record(ridr, [1, 1, 1, 1, 1]), *columns)
+        rid = self.index.locate(self.table.key, key)[0]  # since we index by primary key for update, there will only be one corresponding rid in list
+        #ridr = int.from_bytes(rid[0], byteorder = "big")
+        self.index.update(rid, self.table.return_record(rid, [1, 1, 1, 1, 1]), *columns)
         record = Record(0, self.table.key, columns)
-        for item in rid:
-            itemr = int.from_bytes(item, byteorder = "big")
-            self.table.update(itemr, schema_encoding, record)
+        self.table.update(rid, schema_encoding, record)
+        #for item in rid:
+            #itemr = int.from_bytes(item, byteorder = "big")
+            #self.table.update(item, schema_encoding, record)
 
     """
     :param start_range: int         # Start of the key range to aggregate
