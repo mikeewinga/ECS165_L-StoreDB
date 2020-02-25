@@ -79,13 +79,14 @@ class PageRange:
         address = self.index.read(rid)
         update_F = [1] * len(col_wanted)
         # saves indirection column of base page in next
-        next = self.pages[address.page].read(address.row)
+        next = self.diskManager.read(self.table_name, address)
         next = int.from_bytes(next, byteorder = "big")
         # goes through each column and if user wants to read the column,
         #    appends user-requested data
         for x in range(0, self.num_columns):
             if(col_wanted[x]==1):
-                record_wanted.append(int.from_bytes(self.pages[address+(x+NUM_METADATA_COLUMNS)].read(address.row), byteorder = "big"))
+                user_data = self.diskManager.read(self.table_name, address+(x+NUM_METADATA_COLUMNS))
+                record_wanted.append(int.from_bytes(user_data, byteorder = "big"))
             else:
                 record_wanted.append(None)
 
@@ -94,7 +95,7 @@ class PageRange:
             # get page number and offset of tail record
             address = self.index.read(next)
             # get schema column of tail record
-            schema = self.pages[address+SCHEMA_ENCODING_COLUMN].read(address.row)
+            schema = self.diskManager.read(self.table_name, address+SCHEMA_ENCODING_COLUMN)
             schema = int.from_bytes(schema, byteorder = "big")
             schema = self.getOffset(schema, len(col_wanted))
             for x in range(0, len(schema)):
@@ -102,9 +103,10 @@ class PageRange:
                     if (update_F[x] == 1):
                         update_F[x] = 0
                         # read the updated column and overwrite corresponding value in record_wanted
-                        record_wanted[x] = int.from_bytes(self.pages[address+(NUM_METADATA_COLUMNS+x)].read(address.row), byteorder = "big")
+                        data = self.diskManager.read(self.table_name, address+(NUM_METADATA_COLUMNS+x))
+                        record_wanted[x] = int.from_bytes(data, byteorder="big")
             # get next RID from indirection column
-            next = self.pages[address.page].read(address.row)
+            next = self.diskManager.read(self.table_name, address)
             next = int.from_bytes(next, byteorder = "big")
 
         return record_wanted
@@ -147,9 +149,9 @@ class PageRange:
         address = self.index.read(base_rid)
         if self.index.delete(base_rid):
             self.delete_queue.append(base_rid)
-        self.pages[address+RID_COLUMN].overwrite_record(address.row, 0)
+        self.diskManager.overwrite(self.table_name, address+RID_COLUMN, 0)
         # saves indirection column of base page in next
-        next = self.pages[address.page].read(address.row)
+        next = self.diskManager.read(self.table_name, address)
         next = int.from_bytes(next, byteorder = "big")
 
         # follow indirection column to updated tail records
@@ -157,7 +159,7 @@ class PageRange:
             # get page number and offset of tail record
             address = self.index.read(next)
             self.index.delete(next)
-            self.pages[address+RID_COLUMN].overwrite_record(address.row, 0)
+            self.diskManager.overwrite(self.table_name, address+RID_COLUMN, 0)
             # get next RID from indirection column
-            next = self.pages[address.page].read(address.row)
+            next = self.diskManager.read(self.table_name, address)
             next = int.from_bytes(next, byteorder = "big")
