@@ -120,6 +120,8 @@ class DiskManager:
             with open(filename, "x") as file:
                 file.write(str(primary_key) + "\n")  # save primary key column number
                 file.write(str(num_user_columns + NUM_METADATA_COLUMNS) + "\n")  # save total number of columns
+            self.active_table_metadata[table_name] = (primary_key, num_user_columns + NUM_METADATA_COLUMNS)
+            self.active_table_indexes[table_name] = {}
             return True
         except FileExistsError:
             return False
