@@ -97,8 +97,8 @@ class Query:
                 column_agg.append(0)
         # sum the values of the aggregate column in specified interval
         for n in range(start_range, (end_range+1)):
-            RID = self.index.locate(0, n)
-            for cur in RID:
-                curr = int.from_bytes(cur, byteorder = "big")
-                sum += self.table.return_record(curr, column_agg)[aggregate_column_index]
+            ridList = self.index.locate(0, n)
+            for cur in ridList:
+                #curr = int.from_bytes(cur, byteorder = "big")
+                sum += self.table.return_record(cur, column_agg)[aggregate_column_index]
         return sum

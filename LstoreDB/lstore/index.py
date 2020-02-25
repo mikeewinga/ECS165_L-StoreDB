@@ -28,13 +28,15 @@ class Index:
     """
 
     def locate(self, column, value):
-        intList = [] # saves the RID's of matching records
+        #intList = [] # saves the RID's of matching records
         if self.indexDict[column].get(value):  # check if given key exists in indexDict
-            byteList =  self.indexDict[column][value]
+            ridList = self.indexDict[column][value]
             # convert byte format to RID numbers
-            for x in byteList:
-                intList.append(x)
-        return intList
+            #for x in byteList:
+                #intList.append(x)
+            return ridList
+        else:
+            return []
 
     """
     # Returns the RIDs of all records with values in column "column" between "begin" and "end"
