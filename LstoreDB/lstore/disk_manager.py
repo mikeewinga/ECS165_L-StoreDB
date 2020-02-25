@@ -84,6 +84,7 @@ class Bufferpool:
 
     def add_page(self, table_name, address, page):
         self.page_map[(table_name, address.pagerange, address.page)] = page
+        pass
         # self.page_map.move_to_end((table_name, address.pagerange, address.page))
 
     def pin_page(self, table_name, address):
@@ -170,7 +171,14 @@ class DiskManager:
             # add to table index the mapping from conceptual address to file offset + num_records
             # -- note that num_records is initially 1 because the TPS is first data entry
             table_index[(address.pagerange, address.page)] = [file_offset, 1]
-            # also load the new page into bufferpool
+            # also load the new page into bufferpool, checking first if bufferpool needs to evict a page
+            if (self.bufferpool.is_full()):
+                # evict page and flush it to disk if dirty
+                evict_page = self.bufferpool.evict()
+                while (len(evict_page) == 0):
+                    evict_page = self.bufferpool.evict()
+                if (evict_page[1].dirty):
+                    self.flush_page(evict_page)
             in_memory_pg = Page()
             self.bufferpool.add_page(table_name, address, in_memory_pg)
 
