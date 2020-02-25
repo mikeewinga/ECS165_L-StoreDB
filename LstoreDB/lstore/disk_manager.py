@@ -16,7 +16,7 @@ class Bufferpool:
         self.page_map = OrderedDict()
 
     def contains_page(self, table_name, address):
-        if (table_name, address.page_range, address.page) in self.page_map:
+        if (table_name, address.pagerange, address.page) in self.page_map:
             return True
         else:
             return False
@@ -33,37 +33,37 @@ class Bufferpool:
     """
     def read(self, table_name, address):
         self.pin_page(table_name, address)  # note that this would be critical section in multithreading
-        page = self.page_map[(table_name, address.page_range, address.page)]
-        self.page_map.move_to_end((table_name, address.page_range, address.page))
+        page = self.page_map[(table_name, address.pagerange, address.page)]
+        self.page_map.move_to_end((table_name, address.pagerange, address.page))
         read_value = page.read(address.row)
         self.unpin_page(table_name, address)
         return read_value
 
     def append_write(self, table_name, address, value):
         self.pin_page(table_name, address)  # note that this would be critical section in multithreading
-        page = self.page_map[(table_name, address.page_range, address.page)]
+        page = self.page_map[(table_name, address.pagerange, address.page)]
         page.write(value)
         page.dirty = True
-        self.page_map.move_to_end((table_name, address.page_range, address.page))
+        self.page_map.move_to_end((table_name, address.pagerange, address.page))
         self.unpin_page(table_name, address)
 
     def overwrite(self, table_name, address, value):
         self.pin_page(table_name, address)  # note that this would be critical section in multithreading
-        page = self.page_map[(table_name, address.page_range, address.page)]
+        page = self.page_map[(table_name, address.pagerange, address.page)]
         page.overwrite_record(address.row, value)
         page.dirty = True
-        self.page_map.move_to_end((table_name, address.page_range, address.page))
+        self.page_map.move_to_end((table_name, address.pagerange, address.page))
         self.unpin_page(table_name, address)
 
     def page_has_capacity(self, table_name, address):
-        return self.page_map[(table_name, address.page_range, address.page)].has_capacity()
+        return self.page_map[(table_name, address.pagerange, address.page)].has_capacity()
 
     """
     FIXME do we need this function?
     """
     def delete(self, table_name, address):
-        page = self.page_map[(table_name, address.page_range, address.page)]
-        del self.page_map[(table_name, address.page_range, address.page)]
+        page = self.page_map[(table_name, address.pagerange, address.page)]
+        del self.page_map[(table_name, address.pagerange, address.page)]
         return page
 
     """
@@ -71,7 +71,7 @@ class Bufferpool:
     """
     def evict(self):
         # popItem pops and returns (key, value) in FIFO order with False arg
-        address_to_page = self.page_map.popItem(False)
+        address_to_page = self.page_map.popitem(False)
         table_name = address_to_page[0][0]
         page_range_num = address_to_page[0][1]
         page_num = address_to_page[0][2]
@@ -83,21 +83,21 @@ class Bufferpool:
             return address_to_page
 
     def add_page(self, table_name, address, page):
-        self.page_map[(table_name, address.page_range, address.page)] = page
-        # self.page_map.move_to_end((table_name, address.page_range, address.page))
+        self.page_map[(table_name, address.pagerange, address.page)] = page
+        # self.page_map.move_to_end((table_name, address.pagerange, address.page))
 
     def pin_page(self, table_name, address):
-        self.page_map[(table_name, address.page_range, address.page)].pin_count += 1
+        self.page_map[(table_name, address.pagerange, address.page)].pin_count += 1
 
     def unpin_page(self, table_name, address):
-        self.page_map[(table_name, address.page_range, address.page)].pin_count -= 1
+        self.page_map[(table_name, address.pagerange, address.page)].pin_count -= 1
 
 
 class DiskManager:
     def __init__(self):
         self.bufferpool = Bufferpool()
         self.directory_path = ""
-        self.active_table_indexes = {}  # { string table_name : {address tuple (int page_range, (int base/tail, int page_num)) : (file_offset_bytes, num_records) }}
+        self.active_table_indexes = {}  # { string table_name : {address tuple (int page_range, (int base/tail, int page_num)) : [file_offset_bytes, num_records] }}
         self.active_table_metadata = {}  # { string table_name: (int primary key index, int num_total_columns) }
 
     def set_directory_path(self, directory_path):
@@ -167,7 +167,7 @@ class DiskManager:
             table_index = self.active_table_indexes[table_name]
             file.seek(file_offset)  # reset file position to start of blank page slot
             file.write(init_TPS_bytes)  # write TPS number
-            table_index[(address.pagerange, address.page)] = (file_offset, 0)  # add to table index the mapping from conceptual address to file offset + num_records
+            table_index[(address.pagerange, address.page)] = [file_offset, 0]  # add to table index the mapping from conceptual address to file offset + num_records
             # also load the new page into bufferpool
             in_memory_pg = Page()
             self.bufferpool.add_page(table_name, address, in_memory_pg)
@@ -239,7 +239,7 @@ class DiskManager:
             for line in file:
                 (page_range_num, base_tail, page_num, file_offset, num_records) = line.split()
                 address_tuple = (int(page_range_num), (int(base_tail), int(page_num)))
-                self.active_table_indexes[table_name][address_tuple] = (int(file_offset), int(num_records))
+                self.active_table_indexes[table_name][address_tuple] = [int(file_offset), int(num_records)]
 
     """
     :param evict_page: key-value pair { (string table_name, int page_range, (int base/tail, int page_num)) : Page() }
