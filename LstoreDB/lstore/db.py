@@ -1,15 +1,36 @@
 from lstore.table import Table
 from lstore.disk_manager import DiskManager
 from lstore.config import *
+import threading
+import time
+
+def mergeLoop():
+    t_ind = 0
+    pr_ind = 0
+    global tables
+    global diskManager
+    while 1:
+        if t_ind < len(tables):
+            pagenum = len(tables[t_ind].pageranges)
+            #print(pagenum)
+            t_ind = t_ind + 1
+        else:
+            time.sleep(0)
+            t_ind = 0
+
 
 class Database():
 
     def __init__(self):
+        global tables
+        tables = []
         #self.tables = {}  # maps {string name : Table}
         #self.num_tables = 0
         global diskManager
         diskManager = DiskManager()
         self.diskManager = diskManager
+        merger = threading.Thread(target=mergeLoop)
+        merger.start()
         pass
 
     def open(self, path):
@@ -29,6 +50,7 @@ class Database():
     def create_table(self, name, num_columns, key):
         if (self.diskManager.new_table_file(name, key, num_columns)):  # check if new table file was successfully created
             table = Table(name, key, num_columns, self.diskManager)
+            tables.append(table)
             return table
         else:
             return None
