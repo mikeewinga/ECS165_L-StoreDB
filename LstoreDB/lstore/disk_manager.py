@@ -268,7 +268,7 @@ class DiskManager:
                              + str(address_tuple[1][0]) + " "\
                              + str(address_tuple[1][1]) + " "\
                              + str(table_index[address_tuple][FILE_OFFSET]) + " "\
-                             + str(table_index[address_tuple][NUM_RECORDS] + "\n"
+                             + str(table_index[address_tuple][NUM_RECORDS]) + "\n"
                 file.write(index_line)
         # del self.active_table_indexes[table_name]
 
