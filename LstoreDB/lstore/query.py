@@ -44,9 +44,9 @@ class Query:
         rid = self.index.locate(column, key)
         record_set = []
         for item in rid:
-            item_I = int.from_bytes(item, byteorder = "big")
-            record_set.append(Record(item_I, key,
-            self.table.return_record(item_I, query_columns)))
+            #item_I = int.from_bytes(item, byteorder = "big")
+            record_set.append(Record(item, key,
+            self.table.return_record(item, query_columns)))
         return record_set
 
     """
@@ -69,13 +69,14 @@ class Query:
                 schema_encoding = schema_encoding + bit
             bit = bit // 2
         #get corresponding rid from key
-        rid = self.index.locate(self.table.key, key)
-        ridr = int.from_bytes(rid[0], byteorder = "big")
-        self.index.update(rid[0], self.table.return_record(ridr, [1, 1, 1, 1, 1]), *columns)
+        rid = self.index.locate(self.table.key, key)[0]  # since we index by primary key for update, there will only be one corresponding rid in list
+        #ridr = int.from_bytes(rid[0], byteorder = "big")
+        self.index.update(rid, self.table.return_record(rid, [1, 1, 1, 1, 1]), *columns)
         record = Record(0, self.table.key, columns)
-        for item in rid:
-            itemr = int.from_bytes(item, byteorder = "big")
-            self.table.update(itemr, schema_encoding, record)
+        self.table.update(rid, schema_encoding, record)
+        #for item in rid:
+            #itemr = int.from_bytes(item, byteorder = "big")
+            #self.table.update(item, schema_encoding, record)
 
     """
     :param start_range: int         # Start of the key range to aggregate
@@ -96,8 +97,8 @@ class Query:
                 column_agg.append(0)
         # sum the values of the aggregate column in specified interval
         for n in range(start_range, (end_range+1)):
-            RID = self.index.locate(0, n)
-            for cur in RID:
-                curr = int.from_bytes(cur, byteorder = "big")
-                sum += self.table.return_record(curr, column_agg)[aggregate_column_index]
+            ridList = self.index.locate(0, n)
+            for cur in ridList:
+                #curr = int.from_bytes(cur, byteorder = "big")
+                sum += self.table.return_record(cur, column_agg)[aggregate_column_index]
         return sum

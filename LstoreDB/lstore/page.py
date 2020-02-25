@@ -2,9 +2,15 @@ from lstore.config import *
 
 class Page:
 
-    def __init__(self):
+    def __init__(self, bytes = None):
         self.num_records = 0
-        self.data = bytearray(PAGESIZE)
+        self.dirty = False
+        self.pin_count = 0
+        if (bytes != None):
+            self.data = bytearray(bytes)
+        else:
+            self.data = bytearray(PAGESIZE)
+        self.write(2**64 - 1)  # fill up first record slot with TPS number
 
     """
     Checks if there is space left in page

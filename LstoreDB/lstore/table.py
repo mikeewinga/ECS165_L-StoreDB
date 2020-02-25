@@ -35,7 +35,7 @@ class Table:
     :param num_columns: int     #Number of Columns: all columns are integer
     :param key: int             #Index of table key in columns
     """
-    def __init__(self, name, key, num_columns):
+    def __init__(self, name, key, num_columns, diskManager):
         self.name = name
         self.key = key
         self.num_columns = num_columns
@@ -45,8 +45,9 @@ class Table:
         self.current_Rid_tail = 2**64 - 1
         self.current_Prid = 0
         self.pageranges = {}
-        self.pageranges[0] = PageRange(0, self.current_Rid_base, num_columns)
+        self.pageranges[0] = PageRange(self.name, 0, self.current_Rid_base, num_columns, diskManager)
         self.index = PageDirectory()
+        self.diskManager = diskManager
         pass
 
     def get_timestamp(self):
@@ -70,7 +71,7 @@ class Table:
         # IF page range id is higher than current max prid -> make new page range
         if prid > self.current_Prid:
             self.current_Prid = prid
-            self.pageranges[prid] = PageRange(prid, self.current_Rid_base, self.num_columns)
+            self.pageranges[prid] = PageRange(self.name, prid, self.current_Rid_base, self.num_columns, self.diskManager)
         #insert record into the pagerange with rid and current time
         self.pageranges[prid].insert(record, self.current_Rid_base, self.get_timestamp())
         # update rid->page range id index
@@ -106,7 +107,7 @@ class Table:
         prid = self.index.read(base_rid)
         self.pageranges[prid].update(base_rid, tail_schema, record, self.current_Rid_tail, self.get_timestamp())
         self.current_Rid_tail = self.current_Rid_tail - 1
-        
+
     def delete(self, base_rid):
         prid = self.index.read(base_rid)
         self.index.delete(base_rid)
