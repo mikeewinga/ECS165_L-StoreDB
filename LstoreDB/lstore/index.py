@@ -16,8 +16,9 @@ class Index:
     """
     def __init__(self, table):
         self.table = table
+        self.diskManager = table.diskManager
         self.hasIndex = [0]*table.num_columns
-        self.indexDict = [{}]*table.num_columns
+        self.indexDict = [{}]*table.num_columns  # each dictionary maps {key value : list of RID's}
 
     """
     # returns the location of all records with the given value
@@ -64,24 +65,26 @@ class Index:
             return
         else:
             self.hasIndex[column_number] = 1
-        # number of pages needed for index
+        # number of page ranges needed for index
         numIndexPages = self.table.current_Rid_base // RANGESIZE
         # for every record, map the key of given column number to RID and save in dictionary
         step = NUM_METADATA_COLUMNS + self.table.num_columns
         query_columns = [0] * self.table.num_columns
         query_columns[column_number] = 1
-        for i in range(0, numIndexPages+1):
-            for j in range(0,self.table.pageranges[i].bOffSet+1,step):
-                keyPage = self.table.pageranges[i].pages[(0, NUM_METADATA_COLUMNS+j)]
-                ridPage = self.table.pageranges[i].pages[(0, 1+j)]
-                for x in range(0, ridPage.num_records):
-                    key = self.table.return_record(int.from_bytes(ridPage.read(x),byteorder='big',signed=False), query_columns)[column_number]
-                    F = self.indexDict[column_number].get(key)
-                    if F != None:
-                        F = F.append(ridPage.read(x))
-                    else:
-                        self.indexDict[column_number][key] = [ridPage.read(x)]
-        pass
+        for i in range(0, numIndexPages+1):  # for all page ranges in table
+            for j in range(0,self.table.pageranges[i].bOffSet+RID_COLUMN,step):  # for all base physical pages in range
+                rid_page_address = Address(i, 0, RID_COLUMN+j)
+                num_records = self.diskManager.page_num_records(self.table.name, rid_page_address)
+                for x in range(1, num_records):  # for all record slots in page starting from 1 (skip 0 because that's the TPS)
+                    rid_page_address.row = x
+                    # read the rid number from page and convert from bytes to int
+                    rid = int.from_bytes(self.diskManager.read(self.table.name, rid_page_address), byteorder='big',signed=False)
+                    key = self.table.return_record(rid, query_columns)[column_number]
+                    rid_list = self.indexDict[column_number].get(key)
+                    if rid_list != None:  # the key already is in index so just append the rid to the mapped list
+                        rid_list = rid_list.append(rid)
+                    else:  # the key doesn't exist in index yet
+                        self.indexDict[column_number][key] = [rid]
 
     """
     deletes record from index
