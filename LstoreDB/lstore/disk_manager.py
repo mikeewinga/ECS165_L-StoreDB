@@ -151,7 +151,7 @@ class DiskManager:
             block_full = True
             for i in range(COLUMN_BLOCK_PAGES):
                 file.seek(file_offset)
-                page_TPS = file.read(DATASIZE)
+                page_TPS = int.from_bytes(file.read(DATASIZE), byteorder='big', signed=False)
                 if (page_TPS == 0):
                     block_full = False
                     break
@@ -230,11 +230,13 @@ class DiskManager:
             self.load_index_from_disk(table_name)  # load the table's index from file into memory
         table_index = self.active_table_indexes[table_name]
         file_offset = table_index[(address.pagerange, address.page)][FILE_OFFSET]
+        num_records = table_index[(address.pagerange, address.page)][NUM_RECORDS]
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
         with open(filename, "rb") as file:
             file.seek(file_offset)
             page_bytes = file.read(PAGESIZE)
-            page_copy = Page(page_bytes)
+            page_copy = Page(page_bytes, num_records)
+            #page_copy = Page(page_bytes)
             self.bufferpool.add_page(table_name, address, page_copy)
 
     def load_index_from_disk(self, table_name):

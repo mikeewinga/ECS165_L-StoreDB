@@ -2,15 +2,15 @@ from lstore.config import *
 
 class Page:
 
-    def __init__(self, bytes = None):
-        self.num_records = 0
+    def __init__(self, bytes = None, num_records = 0):
+        self.num_records = num_records
         self.dirty = False
         self.pin_count = 0
         if (bytes != None):
             self.data = bytearray(bytes)
         else:
             self.data = bytearray(PAGESIZE)
-        self.write(2**64 - 1)  # fill up first record slot with TPS number
+            self.write(2**64 - 1)  # fill up first record slot with TPS number if the Page() is created from scratch
 
     """
     Checks if there is space left in page
@@ -42,6 +42,7 @@ class Page:
             pos = self.num_records * DATASIZE
             self.data[pos:pos+len(insert)] = insert
             self.num_records += 1
+            self.dirty = True
             return True
         return False
 
@@ -54,6 +55,7 @@ class Page:
             # Find byte position corresponding to record and overwrite the data
             pos = record_index * DATASIZE
             self.data[pos:pos+(DATASIZE)] = insert
+            self.dirty = True
             return True
         return False
 
