@@ -24,15 +24,17 @@ class PageRange:
         self.tOffSet = 0
         self.index = PageDirectory()
         self.delete_queue = []
-        self.pages = {}
+        # self.pages = set()  # FIXME necessary? hash set recording (base/tail, page num) for every existing page in range
         self.diskManager = diskManager
         for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
             #self.pages[(0,x)] = Page()
             #self.pages[(1,x)] = Page()
             base_address = Address(self.prid, 0, x)
             self.diskManager.new_page(self.table_name, base_address, x)
+            # self.pages.add((0,x)) # FIXME necessary?
             tail_address = Address(self.prid, 1, x)
             self.diskManager.new_page(self.table_name, tail_address, x)
+            # self.pages.add((0, x)) # FIXME necessary?
 
     #pass in rid from table
     def insert(self, record, rid, time):

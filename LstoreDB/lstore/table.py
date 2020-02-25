@@ -61,12 +61,20 @@ class Table:
         data[6] = stamp.second
         return data
 
+    """
+    # Handle creation of page ranges and partition record into page ranges
+    # update rid -> page range id index
+    """
     def insert(self, record):
-        prid = self.current_Rid_base//RANGESIZE
+        #handles page range indexing and allocating page ranges
+        prid = (self.current_Rid_base-1)//RANGESIZE
+        # IF page range id is higher than current max prid -> make new page range
         if prid > self.current_Prid:
             self.current_Prid = prid
             self.pageranges[prid] = PageRange(self.name, prid, self.current_Rid_base, self.num_columns, self.diskManager)
+        #insert record into the pagerange with rid and current time
         self.pageranges[prid].insert(record, self.current_Rid_base, self.get_timestamp())
+        # update rid->page range id index
         self.index.write(self.current_Rid_base, prid)
         self.current_Rid_base = self.current_Rid_base + 1
 
