@@ -140,12 +140,12 @@ class PageRange:
                 self.diskManager.new_page(self.table_name, tail_address, x)
 
         # set base record indirection to rid of new tail record
-        self.diskManager.overwrite(self.table_name, bAddress+INDIRECTION_COLUMN, bAddress, tid)
+        self.diskManager.overwrite(self.table_name, bAddress+INDIRECTION_COLUMN, tid)
         # change schema of base record
-        cur_base_schema = self.diskManager.read(self.table_name, bAddress+SCHEMA_ENCODING_COLUMN, bAddress.row)
+        cur_base_schema = self.diskManager.read(self.table_name, bAddress+SCHEMA_ENCODING_COLUMN)
         cur_base_schema = int.from_bytes(cur_base_schema,byteorder='big',signed=False)
         new_base_schema = cur_base_schema | tail_schema
-        self.diskManager.overwrite(self.table_name, bAddress+SCHEMA_ENCODING_COLUMN, bAddress, new_base_schema)
+        self.diskManager.overwrite(self.table_name, bAddress+SCHEMA_ENCODING_COLUMN, new_base_schema)
 
     def delete(self, base_rid):
         address = self.index.read(base_rid)
