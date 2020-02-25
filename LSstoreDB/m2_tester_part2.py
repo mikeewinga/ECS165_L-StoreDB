@@ -35,7 +35,7 @@ for key in keys:
     if error:
         print('select error on', key, ':', record, ', correct:', records[key])
 print("Select finished")
-
+"""
 deleted_keys = sample(keys, 100)
 for key in deleted_keys:
     query.delete(key)
@@ -48,5 +48,5 @@ for i in range(0, 100):
     if column_sum != result:
         print('sum error on [', keys[r[0]], ',', keys[r[1]], ']: ', result, ', correct: ', column_sum)
 print("Aggregate finished")
-
+"""
 db.close()
