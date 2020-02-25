@@ -38,9 +38,7 @@ class PageRange:
 
     #pass in rid from table
     def insert(self, record, rid, time):
-        address = Address(self.prid, 0, self.bOffSet)
-        num_records = self.diskManager.page_num_records(self.table_name, address)
-        address.row = num_records
+        address = Address(self.prid, 0, self.bOffSet, self.pages[(0,self.bOffSet)].num_records) #FIXME
         self.index.write(rid, address)
         #indirection initialized to 0
         self.diskManager.append_write(self.table_name, address+INDIRECTION_COLUMN, 0)
@@ -113,22 +111,23 @@ class PageRange:
 
     def update(self, base_rid, tail_schema, record, tid, time):
         bAddress = self.index.read(base_rid)
-        address = Address(self.prid, 1, self.tOffSet, self.pages[(1,self.tOffSet)].num_records)
+        address = Address(self.prid, 1, self.tOffSet)
+        tail_num_rows = self.diskManager.page_num_records(self.table_name, address)
+        address.row = tail_num_rows
         self.index.write(tid, address)
         self.cur_tid = tid
-        prev_update_rid = self.pages[bAddress+INDIRECTION_COLUMN].read(bAddress.row)
+        prev_update_rid = self.diskManager.read(self.table_name, bAddress + INDIRECTION_COLUMN)
         # add new tail record
         # set indirection column of tail record to previous update RID
-        self.pages[address+INDIRECTION_COLUMN].write(prev_update_rid)
-        self.pages[address.page].read(address.row)
+        self.diskManager.append_write(self.table_name, address+INDIRECTION_COLUMN, prev_update_rid)
         # set the RID of tail record
-        self.pages[address+RID_COLUMN].write(tid)
+        self.diskManager.append_write(self.table_name, address+RID_COLUMN, tid)
         # set the timestamp and schema encoding
-        self.pages[address+TIMESTAMP_COLUMN].write(time)
-        self.pages[address+SCHEMA_ENCODING_COLUMN].write(tail_schema)
+        self.diskManager.append_write(self.table_name, address+TIMESTAMP_COLUMN, time)
+        self.diskManager.append_write(self.table_name, address+SCHEMA_ENCODING_COLUMN, tail_schema)
         # copy in record data
         for x in range(self.num_columns):
-            self.pages[address+(x+NUM_METADATA_COLUMNS)].write(record.columns[x])
+            self.diskManager.append_write(self.table_name, address+(x+NUM_METADATA_COLUMNS), record.columns[x])
         #expand the tail page if needed
         if not self.pages[address.page].has_capacity():
             self.tOffSet = self.tOffSet + self.num_columns + NUM_METADATA_COLUMNS
@@ -137,12 +136,12 @@ class PageRange:
                 self.diskManager.new_page(self.table_name, tail_address, x)
 
         # set base record indirection to rid of new tail record
-        self.pages[bAddress+INDIRECTION_COLUMN].overwrite_record(bAddress.row, tid)
+        self.diskManager.overwrite(self.table_name, bAddress+INDIRECTION_COLUMN, bAddress, tid)
         # change schema of base record
-        cur_base_schema = self.pages[bAddress+SCHEMA_ENCODING_COLUMN].read(bAddress.row)
+        cur_base_schema = self.diskManager.read(self.table, bAddress+SCHEMA_ENCODING_COLUMN, bAddress.row)
         cur_base_schema = int.from_bytes(cur_base_schema,byteorder='big',signed=False)
         new_base_schema = cur_base_schema | tail_schema
-        self.pages[bAddress+SCHEMA_ENCODING_COLUMN].overwrite_record(bAddress.row, new_base_schema)
+        self.diskManager.overwrite(self.table_name, bAddress+SCHEMA_ENCODING_COLUMN, bAddress, new_base_schema)
 
     def delete(self, base_rid):
         address = self.index.read(base_rid)
