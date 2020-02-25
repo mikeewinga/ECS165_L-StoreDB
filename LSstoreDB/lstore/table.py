@@ -151,50 +151,99 @@ class Table:
 
 
 
-        for i in range (mergeRange.total_base_phys_pages):
-            mergeRange.pages[0, i].overwrite_record(0, newTPS)
+        """
+        #number of max possible physical pages to copy into merge() from a page_range's base page 
+        # i.e. bRID, base_schema and user data columns 
+        numPages =  2 + page_Range.num_columns 
+    
+        #copy pages
+        mergePages = {}
+
+        for i in range (0,2): # go through both potential base pages
+            #mergePages[(i,0)] = copy.deepcopy( page_Range.pages[0, SCHEMA_ENCODING_COLUMN + x*page_Range.total_base_phys_pages] )
+            #mergePages[(i,1)] = copy.deepcopy( page_Range.pages[0, BASE_RID_COLUMN + x*page_Range.total_base_phys_pages] )
             
+            #account for case when pageRange has only one base page 
+            if page_Range.pages[(0, SCHEMA_ENCODING_COLUMN + i*page_Range.total_base_phys_pages)] is None:
+                break
 
-        numPages = mergeRange.total_tail_phys_pages
-        #start_row = address.row
+            #copy schema and bRID columns, overwrite newTPS in each column
+            mergePages[(0, SCHEMA_ENCODING_COLUMN + i*page_Range.total_base_phys_pages)] = copy.deepcopy( page_Range.pages[(0, SCHEMA_ENCODING_COLUMN + i*page_Range.total_base_phys_pages)] )
+            mergePages[(0, SCHEMA_ENCODING_COLUMN + i*page_Range.total_base_phys_pages)].overwrite_record(0, newTPS)
+      
+            mergePages[(0, BASE_RID_COLUMN + i*page_Range.total_base_phys_pages)] = copy.deepcopy( page_Range.pages[(0, BASE_RID_COLUMN + i*page_Range.total_base_phys_pages)] )
+            mergePages[(0, BASE_RID_COLUMN + i*page_Range.total_base_phys_pages)].overwrite_record(0, newTPS)
 
-        start_row = page_Range.index.read(tid).row
+            #copy user data columns and overwrite newTPS
+            for  j in range (page_Range.num_columns):
+                mergePages[(0, NUM_METADATA_COLUMNS +  j + i*page_Range.total_base_phys_pages)] = copy.deepcopy( page_Range.pages[(0, NUM_METADATA_COLUMNS +  j + i*page_Range.total_base_phys_pages)] )
+                mergePages[(0, NUM_METADATA_COLUMNS +  j + i*page_Range.total_base_phys_pages)].overwrite_record(0, newTPS)
+                #print("index: ", NUM_METADATA_COLUMNS +  j + x*page_Range.total_base_phys_pages)
+            
+        """
+
+        #numPages = mergeRange.total_tail_phys_pages
+        #numPages = int(page_Range.tOffSet / page_Range.total_tail_phys_pages)
+        
+        #print("\n\n\nPagerange Offset: ", page_Range.tOffSet, "\n\n\n")
+
+        
+        # index in last tail page, potentially not full
+        #start_row = page_Range.index.read(tid).row
+        start_row = mergeRange.index.read(tid).row
+
+        address = mergeRange.index.read(tid)
+
+        numPages = address.pagenumber
+        print("numPages: ", numPages)
+
+        #address = page_Range.index.read(tid)
 
 
         #look at last tail page, potentially not full
-        for pgNum in range(numPages, 0, -10):
+        for _ in range(numPages, 0, -10):
 
             for recNum in range (start_row, 0, -1):
                 
-                #nextTid = mergeRange.pages[1, address+RID_COLUMN].read(recNum)
-                nextTid = mergeRange.pages[1, RID_COLUMN].read(recNum)
+
+                nextTid = mergeRange.pages[address+RID_COLUMN].read(recNum)
+                #nextTid = mergeRange.pages[1, RID_COLUMN].read(recNum)
+                #nextTid = page_Range.pages[1, address+RID_COLUMN].read(recNum)
+                
                 
                 nextTid = int.from_bytes(nextTid, byteorder = "big")
-                print("nextTid", nextTid)
+                #print("nextTid", nextTid)
 
                 address = mergeRange.index.read(nextTid)
-                print("address: ", address)
+                #address = page_Range.index.read(nextTid)
+                #print("address: ", address)
 
                 baddress = mergeRange.index.read(recNum)
+                #baddress = page_Range.index.read(recNum)
 
+                print("address #", recNum, ": ", address)
                 tSchema = mergeRange.pages[address+SCHEMA_ENCODING_COLUMN].read(address.row)
                 bSchema = mergeRange.pages[baddress+SCHEMA_ENCODING_COLUMN].read(baddress.row)
+                #tSchema = page_Range.pages[address+SCHEMA_ENCODING_COLUMN].read(address.row)
+                #bSchema = page_Range.pages[baddress+SCHEMA_ENCODING_COLUMN].read(baddress.row)
+
                 tSchema = int.from_bytes(tSchema, byteorder = "big")
                 bSchema = int.from_bytes(bSchema, byteorder = "big")
             
                 schemaToUpdate = bSchema & tSchema #bitwise AND
-                resultingBaseSchema = bSchema & (~tSchema)  #bitwise AND NOT
+                resultingBaseSchema = bSchema & (~tSchema)  #bitwise AND_NOT
 
                 
                 # split schemaToUpdate into bool array [0,1,0,...]
                 #schemaToUpdate = self.getOffset(schemaToUpdate, len(resultingBaseSchema))
 
                 strSchemaToUpdate = "{0:{fill}5b}".format(schemaToUpdate, fill='0')
-                print("schema to update: ", strSchemaToUpdate, "\n")
+                #print("schema to update: ", strSchemaToUpdate, "\n")
                 # update basePage columns from tailPage according to schemaToUpdate
                 for x in range(0, len(strSchemaToUpdate)):
                     if (strSchemaToUpdate[x] == '1'):
-                        value = int.from_bytes(mergeRange.pages[address+(NUM_METADATA_COLUMNS+x)].read(address.row), byteorder = "big")
+                        #value = int.from_bytes(mergeRange.pages[address+(NUM_METADATA_COLUMNS+x)].read(address.row), byteorder = "big")
+                        value = int.from_bytes(page_Range.pages[address+(NUM_METADATA_COLUMNS+x)].read(address.row), byteorder = "big")
                         mergeRange.pages[baddress+(NUM_METADATA_COLUMNS+x)].overwrite_record(baddress.row, value)
 
                 #convert new base schema to binary and store back to base record
@@ -202,6 +251,51 @@ class Table:
                 mergeRange.pages[baddress+SCHEMA_ENCODING_COLUMN].overwrite_record(baddress.row, resultingBaseSchema)
 
             start_row = 511
+
+        #apply delete requests from delete_queue
+        for d in page_Range.delete_queue:
+            mergeRange.delete_queue.delete_queue(d)
+
+
+
+
+
+        #replace 
+        
+        page_Range.tps = newTPS
+        
+        for i in range (0,2): # go through both potential base pages
+            #mergePages[(i,0)] = copy.deepcopy( page_Range.pages[0, SCHEMA_ENCODING_COLUMN + x*page_Range.total_base_phys_pages] )
+            #mergePages[(i,1)] = copy.deepcopy( page_Range.pages[0, BASE_RID_COLUMN + x*page_Range.total_base_phys_pages] )
+            
+            #account for case when pageRange has only one base page 
+            if page_Range.pages[(0, SCHEMA_ENCODING_COLUMN + i*page_Range.total_base_phys_pages)] is None:
+                break
+
+            #copy schema and bRID columns, overwrite newTPS in each column
+            page_Range.pages[(0, SCHEMA_ENCODING_COLUMN + i*page_Range.total_base_phys_pages)] = copy.deepcopy( mergeRange.pages[(0, SCHEMA_ENCODING_COLUMN + i*page_Range.total_base_phys_pages)] )
+            page_Range.pages[(0, SCHEMA_ENCODING_COLUMN + i*page_Range.total_base_phys_pages)].overwrite_record(0, newTPS)
+      
+            page_Range.pages[(0, BASE_RID_COLUMN + i*page_Range.total_base_phys_pages)] = copy.deepcopy( mergeRange.pages[(0, BASE_RID_COLUMN + i*page_Range.total_base_phys_pages)] )
+            page_Range.pages[(0, BASE_RID_COLUMN + i*page_Range.total_base_phys_pages)].overwrite_record(0, newTPS)
+
+            #copy user data columns and overwrite newTPS
+            for  j in range (page_Range.num_columns):
+                page_Range.pages[(0, NUM_METADATA_COLUMNS +  j + i*page_Range.total_base_phys_pages)] = copy.deepcopy( mergeRange.pages[(0, NUM_METADATA_COLUMNS +  j + i*page_Range.total_base_phys_pages)] )
+                page_Range.pages[(0, NUM_METADATA_COLUMNS +  j + i*page_Range.total_base_phys_pages)].overwrite_record(0, newTPS)
+                #print("index: ", NUM_METADATA_COLUMNS +  j + x*page_Range.total_base_phys_pages)
+            
+            
+
+        #numPages = mergeRange.total_tail_phys_pages
+        numPages = int(page_Range.tOffSet / page_Range.total_tail_phys_pages)
+        print("\n\n\nPagerange Offset: ", page_Range.tOffSet, "\n\n\n")
+
+
+
+
+
+
 
 
         #   wait till all queries finish that started before merge() started

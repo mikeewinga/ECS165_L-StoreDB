@@ -13,7 +13,7 @@ class PageRange:
 
     def __init__(self, prid, start, num_columns):
         self.prid = prid
-        self.tps = 2**64
+        self.tps = 2**64 - 1
         self.cur_tid = self.tps
         self.base = start
         self.cap = start + RANGESIZE
