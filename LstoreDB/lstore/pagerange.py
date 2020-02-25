@@ -146,14 +146,13 @@ class PageRange:
         new_base_schema = cur_base_schema | tail_schema
         self.pages[bAddress+SCHEMA_ENCODING_COLUMN].overwrite_record(bAddress.row, new_base_schema)
 
-    #FIXME need to fix delete
     def delete(self, base_rid):
         address = self.index.read(base_rid)
         if self.index.delete(base_rid):
             self.delete_queue.append(base_rid)
-        self.pages[address+RID_COLUMN].overwrite_record(address.row, 0)
+        self.diskManager.overwrite(self.table_name, address+RID_COLUMN, 0)
         # saves indirection column of base page in next
-        next = self.pages[address.page].read(address.row)
+        next = self.diskManager.read(self.table_name, address)
         next = int.from_bytes(next, byteorder = "big")
 
         # follow indirection column to updated tail records
@@ -161,7 +160,7 @@ class PageRange:
             # get page number and offset of tail record
             address = self.index.read(next)
             self.index.delete(next)
-            self.pages[address+RID_COLUMN].overwrite_record(address.row, 0)
+            self.diskManager.overwrite(self.table_name, address+RID_COLUMN, 0)
             # get next RID from indirection column
-            next = self.pages[address.page].read(address.row)
+            next = self.diskManager.read(self.table_name, address)
             next = int.from_bytes(next, byteorder = "big")
