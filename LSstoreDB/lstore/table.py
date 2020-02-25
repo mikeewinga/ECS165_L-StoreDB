@@ -219,3 +219,4 @@ class Table:
         #replace
         
         #page_Range.tps = newTPS
+
