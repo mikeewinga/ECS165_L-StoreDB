@@ -115,11 +115,15 @@ class DiskManager:
     def new_table_file(self, table_name, primary_key, num_user_columns):
         try:
             filename = self.directory_path + table_name + BIN_EXTENSION  # binary file for table data
-            with open(filename, "x") as file: pass  # Creates file
+            with open(filename, "xb") as file:  # Creates file
+                # allocate whitespace for first set of column blocks
+                column_set_size = COLUMN_BLOCK_BYTES * (num_user_columns + NUM_METADATA_COLUMNS)
+                file.write(bytearray(column_set_size))
             filename = self.directory_path + table_name + INDEX_EXTENSION  # index/config file for table
             with open(filename, "x") as file:
                 file.write(str(primary_key) + "\n")  # save primary key column number
                 file.write(str(num_user_columns + NUM_METADATA_COLUMNS) + "\n")  # save total number of columns
+            # add entries to the metadata dictionaries for the new table
             self.active_table_metadata[table_name] = (primary_key, num_user_columns + NUM_METADATA_COLUMNS)
             self.active_table_indexes[table_name] = {}
             return True
