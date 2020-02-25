@@ -38,7 +38,9 @@ class PageRange:
 
     #pass in rid from table
     def insert(self, record, rid, time):
-        address = Address(self.prid, 0, self.bOffSet, self.pages[(0,self.bOffSet)].num_records) #FIXME
+        address = Address(self.prid, 0, self.bOffSet)
+        num_records = self.diskManager.page_num_records(self.table_name, address)
+        address.row = num_records
         self.index.write(rid, address)
         #indirection initialized to 0
         self.diskManager.append_write(self.table_name, address+INDIRECTION_COLUMN, 0)
