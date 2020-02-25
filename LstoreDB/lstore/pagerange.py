@@ -38,22 +38,22 @@ class PageRange:
 
     #pass in rid from table
     def insert(self, record, rid, time):
-        address = Address(self.prid, 0, self.bOffSet, self.pages[(0,self.bOffSet)].num_records)
+        address = Address(self.prid, 0, self.bOffSet, self.pages[(0,self.bOffSet)].num_records) #FIXME
         self.index.write(rid, address)
         #indirection initialized to 0
-        self.pages[address+INDIRECTION_COLUMN].write(0)
+        self.diskManager.append_write(self.table_name, address+INDIRECTION_COLUMN, 0)
         #rid taken in from table
-        self.pages[address+RID_COLUMN].write(rid)
+        self.diskManager.append_write(self.table_name, address+RID_COLUMN, rid)
         #get and write time stamp
-        self.pages[address+TIMESTAMP_COLUMN].write(time)
+        self.diskManager.append_write(self.table_name, address+TIMESTAMP_COLUMN, time)
         #write schema passed in from table
-        self.pages[address+SCHEMA_ENCODING_COLUMN].write(0)
+        self.diskManager.append_write(self.table_name, address+SCHEMA_ENCODING_COLUMN, 0)
         #write base rid 0 for base pages
-        self.pages[address+BASE_RID_COLUMN].write(0)
+        self.diskManager.append_write(self.table_name, address+BASE_RID_COLUMN, 0)
         for x in range(self.num_columns):
-            self.pages[address+(x+NUM_METADATA_COLUMNS)].write(record.columns[x])
+            self.diskManager.append_write(self.table_name, address + (x+NUM_METADATA_COLUMNS), record.columns[x])
         # expand new base pages if needed
-        if not self.pages[address.page].has_capacity():
+        if not self.diskManager.page_has_capacity(self.table_name, address):
             self.bOffSet = self.bOffSet + self.num_columns + NUM_METADATA_COLUMNS
             for x in range(self.num_columns + NUM_METADATA_COLUMNS):
                 base_address = Address(self.prid, 0, x + self.bOffSet)

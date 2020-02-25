@@ -139,5 +139,7 @@ class Address:
         self.row = row
 
     def __add__(self, offset):
-        ret = (self.page[0],self.page[1]+offset)
-        return ret
+        #ret = (self.page[0],self.page[1]+offset)
+        #return ret
+        new_page_num = self.page[1] + offset
+        return Address(self.pagerange, self.flag, new_page_num, self.row)
