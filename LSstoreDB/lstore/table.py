@@ -1,16 +1,10 @@
 from lstore.page import *
 from time import time
 from lstore.index import Index
+from lstore.config import *
+from lstore.pagerange import *
 import datetime
-
-INDIRECTION_COLUMN = 0
-RID_COLUMN = 1
-TIMESTAMP_COLUMN = 2
-SCHEMA_ENCODING_COLUMN = 3
-BASE_RID_COLUMN=4
-NUM_METADATA_COLUMNS=5
-#TODO put all this in the config
-
+import copy
 
 class Record:
 
@@ -47,13 +41,12 @@ class Table:
         self.num_columns = num_columns
         self.total_base_phys_pages = num_columns + NUM_METADATA_COLUMNS
         self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
-        self.page_directory = {}
-        for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
-            self.page_directory[(0,x)] = Page()
-            self.page_directory[(1,x)] = Page()
         self.current_Rid_base = 1
         self.current_Rid_tail = 2**64 - 1
-        self.index = Index(self)
+        self.current_Prid = 0
+        self.pageranges = {}
+        self.pageranges[0] = PageRange(0, self.current_Rid_base, num_columns)
+        self.index = PageDirectory()
         pass
 
     def get_timestamp(self):
@@ -67,27 +60,13 @@ class Table:
         data[6] = stamp.second
         return data
 
-    def insert(self, schema, record):
-        offSet = 0;
-        # loops through the base pages in the indirection column until finding a page with space
-        while not self.page_directory[(0,offSet)].has_capacity():
-            offSet = offSet + self.num_columns + NUM_METADATA_COLUMNS
-        self.index.write(self.current_Rid_base, [(0,offSet),
-            self.page_directory[(0,RID_COLUMN+offSet)].num_records])
-        self.page_directory[(0,INDIRECTION_COLUMN+offSet)].write(0)
-        self.page_directory[(0,RID_COLUMN+offSet)].write(self.current_Rid_base)
-        data = self.get_timestamp()
-        #print(''.join(format(x, '02x') for x in data))
-        self.page_directory[(0,TIMESTAMP_COLUMN+offSet)].write(data)
-        self.page_directory[(0,SCHEMA_ENCODING_COLUMN+offSet)].write(schema)
-        self.page_directory[(0,BASE_RID_COLUMN+offSet)].write(0)
-        #print(self.current_Rid_base)
-        for x in range(self.num_columns):
-            self.page_directory[(0,x + NUM_METADATA_COLUMNS+offSet)].write(record.columns[x])
-        if not self.page_directory[(0,offSet)].has_capacity():
-            for x in range(self.num_columns + NUM_METADATA_COLUMNS):
-                self.page_directory[(0,x + self.total_base_phys_pages)] = Page()
-            self.total_base_phys_pages = self.total_base_phys_pages + self.num_columns + NUM_METADATA_COLUMNS
+    def insert(self, record):
+        prid = self.current_Rid_base//RANGESIZE
+        if prid > self.current_Prid:
+            self.current_Prid = prid
+            self.pageranges[prid] = PageRange(prid, self.current_Rid_base, self.num_columns)
+        self.pageranges[prid].insert(record, self.current_Rid_base, self.get_timestamp())
+        self.index.write(self.current_Rid_base, prid)
         self.current_Rid_base = self.current_Rid_base + 1
 
 
@@ -112,80 +91,18 @@ class Table:
 
     def return_record(self, rid, col_wanted):
         record_wanted = []
-        page_Index = self.index.read(rid)
-        page_offset = page_Index[0]
-        update_F = [1] * len(col_wanted)
-        # saves indirection column of base page in next
-        next = self.page_directory[page_Index[0]].read(page_Index[1])
-        next = int.from_bytes(next, byteorder = "big")
-        # goes through each column and if user wants to read the column,
-        #    appends user-requested data
-        for x in range(0, self.num_columns):
-            if(col_wanted[x]==1):
-                record_wanted.append(int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+x+NUM_METADATA_COLUMNS)].read(page_Index[1]), byteorder = "big"))
-            else:
-                record_wanted.append(None)
-        # follow indirection column to updated tail records
-        while next: # if next != 0, must follow tail records
-            # get page number and offset of tail record
-            page_Index = self.index.read(next)
-            page_offset = page_Index[0]
-            # get schema column of tail record
-            schema = self.page_directory[(page_offset[0], page_offset[1]+SCHEMA_ENCODING_COLUMN)].read(page_Index[1])
-            schema = int.from_bytes(schema, byteorder = "big")
-            schema = self.getOffset(schema, len(col_wanted))
-            for x in range(0, len(schema)):
-                if (schema[x] == 1) and (col_wanted[x] == 1):
-                    if (update_F[x] == 1):
-                        update_F[x] = 0
-                        # read the updated column and overwrite corresponding value in record_wanted
-                        record_wanted[x] = int.from_bytes(self.page_directory[(page_offset[0], page_offset[1]+NUM_METADATA_COLUMNS+x)].read(page_Index[1]), byteorder = "big")
-            # get next RID from indirection column
-            next = self.page_directory[page_Index[0]].read(page_Index[1])
-            next = int.from_bytes(next, byteorder = "big")
-        return record_wanted
+        prid = self.index.read(rid)
+        return self.pageranges[prid].return_record(rid, col_wanted)
 
     def update(self, base_rid, tail_schema, record):
-        page_Index = self.index.read(base_rid)
-        base_page_index = page_Index[0][1]
-        record_offset = page_Index[1]
-        prev_update_rid = self.page_directory[(0,INDIRECTION_COLUMN+base_page_index)].read(record_offset)
-        #print(prev_update_rid)
-        # add new tail record
-        # find the empty offset to insert new record at
-        offSet = 0;
-        while not self.page_directory[(1,offSet)].has_capacity():
-            offSet = offSet + self.num_columns + NUM_METADATA_COLUMNS
-        # set indirection column of tail record to previous update RID
-        self.page_directory[(1,INDIRECTION_COLUMN+offSet)].write(prev_update_rid)
-        # update the index page directory with tail record
-        self.index.write(self.current_Rid_tail, [(1,offSet),
-            self.page_directory[(1,RID_COLUMN+offSet)].num_records])
-        # set the RID of tail record
-        self.page_directory[(1,RID_COLUMN+offSet)].write(self.current_Rid_tail)
-        # set the timestamp and schema encoding
-        data = self.get_timestamp()
-        self.page_directory[(1,TIMESTAMP_COLUMN+offSet)].write(data)
-        self.page_directory[(1,SCHEMA_ENCODING_COLUMN+offSet)].write(tail_schema)
-        self.page_directory[(1,BASE_RID_COLUMN+offSet)].write(base_rid)
-        # copy in record data
-        for x in range(self.num_columns):
-            self.page_directory[(1,x + NUM_METADATA_COLUMNS+offSet)].write(record.columns[x])
-        #expand the tail page if needed
-        if not self.page_directory[(1,offSet)].has_capacity():
-            for x in range(self.num_columns + NUM_METADATA_COLUMNS):
-                self.page_directory[(1,x + self.total_tail_phys_pages)] = Page()
-            self.total_tail_phys_pages = self.total_tail_phys_pages + self.num_columns + NUM_METADATA_COLUMNS
-
-        # set base record indirection to rid of new tail record
-        self.page_directory[(0,INDIRECTION_COLUMN+base_page_index)].overwrite_record(record_offset, self.current_Rid_tail)
-        # change schema of base record
-        cur_base_schema = self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_page_index)].read(record_offset)
-        cur_base_schema = int.from_bytes(cur_base_schema,byteorder='big',signed=False)
-        new_base_schema = cur_base_schema | tail_schema
-        self.page_directory[(0,SCHEMA_ENCODING_COLUMN+base_page_index)].overwrite_record(record_offset, new_base_schema)
-
+        prid = self.index.read(base_rid)
+        self.pageranges[prid].update(base_rid, tail_schema, record, self.current_Rid_tail, self.get_timestamp())
         self.current_Rid_tail = self.current_Rid_tail - 1
+        
+    def delete(self, base_rid):
+        prid = self.index.read(base_rid)
+        self.index.delete(base_rid)
+        self.pageranges[prid].delete(base_rid)
 
     def debugRead(self, index):
         offSet = (int)(index // (PAGESIZE/DATASIZE))*(4+self.num_columns) # offset is page index
@@ -203,5 +120,90 @@ class Table:
             print(int.from_bytes(self.page_directory[(1,x+offSet)].read(newIndex), byteorder = "big"), end =" ")
         print()
 
-    def __merge(self):
+    def merge(self, page_Range):
+       
+        mergeStartTime = datetime.datetime.now()
+
+        page_Range.delete_queue.clear()
+    
+        tid = page_Range.cur_tid
+
+        newTPS = page_Range.cur_tid
+    
+        mergeRange = copy.deepcopy(page_Range)
+
+        start_row = mergeRange.index.read(tid).row
+
+        address = mergeRange.index.read(tid)
+
+        numPages = address.pagenumber
+
+        factor = 0; # increment this each time by 1
+        temp = address + (RID_COLUMN + factor * (-10)); # change this if you want
+
+        while True:
+
+            for recNum in range (start_row, 0, -1):
+                
+                nextTid = mergeRange.pages[temp].read(recNum)
+                
+                nextTid = int.from_bytes(nextTid, byteorder = "big")
+
+                address = mergeRange.index.read(nextTid)
+
+                baddress = mergeRange.index.read(recNum)
+
+                print("address #", recNum, ": ", address)
+                tSchema = mergeRange.pages[address+SCHEMA_ENCODING_COLUMN].read(address.row)
+                bSchema = mergeRange.pages[baddress+SCHEMA_ENCODING_COLUMN].read(baddress.row)
+
+                tSchema = int.from_bytes(tSchema, byteorder = "big")
+                bSchema = int.from_bytes(bSchema, byteorder = "big")
+            
+                schemaToUpdate = bSchema & tSchema #bitwise AND
+                resultingBaseSchema = bSchema & (~tSchema)  #bitwise AND_NOT
+
+                strSchemaToUpdate = "{0:{fill}5b}".format(schemaToUpdate, fill='0')
+               
+                for x in range(0, len(strSchemaToUpdate)):
+                    if (strSchemaToUpdate[x] == '1'):
+                        value = int.from_bytes(page_Range.pages[address+(NUM_METADATA_COLUMNS+x)].read(address.row), byteorder = "big")
+                        mergeRange.pages[baddress+(NUM_METADATA_COLUMNS+x)].overwrite_record(baddress.row, value)
+
+                resultingBaseSchema = resultingBaseSchema.to_bytes(8, byteorder = "big")
+                mergeRange.pages[baddress+SCHEMA_ENCODING_COLUMN].overwrite_record(baddress.row, resultingBaseSchema)
+
+            start_row = 511
+            factor += 1
+            temp = address + (RID_COLUMN + factor * (-10))
+            print(temp)
+            if (temp[1]) < 0:
+                break
+
+        for d in page_Range.delete_queue:
+            mergeRange.delete_queue.delete_queue(d)
+
+        
+        page_Range.tps = newTPS
+        
+        for i in range (0,2): # go through both potential base pages
+            
+            if page_Range.pages[(0, SCHEMA_ENCODING_COLUMN + i*page_Range.total_base_phys_pages)] is None:
+                break
+
+            page_Range.pages[(0, SCHEMA_ENCODING_COLUMN + i*page_Range.total_base_phys_pages)] = copy.deepcopy( mergeRange.pages[(0, SCHEMA_ENCODING_COLUMN + i*page_Range.total_base_phys_pages)] )
+            page_Range.pages[(0, SCHEMA_ENCODING_COLUMN + i*page_Range.total_base_phys_pages)].overwrite_record(0, newTPS)
+      
+            page_Range.pages[(0, BASE_RID_COLUMN + i*page_Range.total_base_phys_pages)] = copy.deepcopy( mergeRange.pages[(0, BASE_RID_COLUMN + i*page_Range.total_base_phys_pages)] )
+            page_Range.pages[(0, BASE_RID_COLUMN + i*page_Range.total_base_phys_pages)].overwrite_record(0, newTPS)
+
+            for  j in range (page_Range.num_columns):
+                page_Range.pages[(0, NUM_METADATA_COLUMNS +  j + i*page_Range.total_base_phys_pages)] = copy.deepcopy( mergeRange.pages[(0, NUM_METADATA_COLUMNS +  j + i*page_Range.total_base_phys_pages)] )
+                page_Range.pages[(0, NUM_METADATA_COLUMNS +  j + i*page_Range.total_base_phys_pages)].overwrite_record(0, newTPS)
+                        
+        numPages = int(page_Range.tOffSet / page_Range.total_tail_phys_pages)
+        print("\n\n\nPagerange Offset: ", page_Range.tOffSet, "\n\n\n")
+         
+        print("end of merge")
         pass
+
