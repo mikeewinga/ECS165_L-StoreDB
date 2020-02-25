@@ -29,9 +29,13 @@ class PageRange:
             self.pages[(0,x)] = Page()
             self.pages[(1,x)] = Page()
 
-    #pass in rid from table
+    """
+    # Separate the record and write into the coresponding page
+    # update rid -> address index
+    """
     def insert(self, record, rid, time):
         address = Address(self.prid, 0, self.bOffSet, self.pages[(0,self.bOffSet)].num_records)
+        # update rid -> add address index
         self.index.write(rid, address)
         #indirection initialized to 0
         self.pages[address+INDIRECTION_COLUMN].write(0)
@@ -43,8 +47,10 @@ class PageRange:
         self.pages[address+SCHEMA_ENCODING_COLUMN].write(0)
         #write base rid 0 for base pages
         self.pages[address+BASE_RID_COLUMN].write(0)
+        #write user given data into pages
         for x in range(self.num_columns):
             self.pages[address+(x+NUM_METADATA_COLUMNS)].write(record.columns[x])
+        #if base page is full after insert allocate more
         if not self.pages[address.page].has_capacity():
             self.bOffSet = self.bOffSet + self.num_columns + NUM_METADATA_COLUMNS
             for x in range(self.num_columns + NUM_METADATA_COLUMNS):

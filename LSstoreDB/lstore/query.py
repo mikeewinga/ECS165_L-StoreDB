@@ -27,6 +27,7 @@ class Query:
     """
 
     def insert(self, *columns):
+        #package information into records and pass records to table
         record = Record(self.table.current_Rid_base, self.table.key, columns)
         self.table.insert(record)
 
@@ -40,12 +41,12 @@ class Query:
     def select(self, key, column, query_columns):
         # create index for column if needed
         self.index.create_index(column)
-        rid = self.index.locate(0, key)
+        rid = self.index.locate(column, key)
         record_set = []
         for item in rid:
-            itemr = int.from_bytes(item, byteorder = "big")
-            record_set.append(Record(itemr, key,
-            self.table.return_record(itemr, query_columns)))
+            item_I = int.from_bytes(item, byteorder = "big")
+            record_set.append(Record(item_I, key,
+            self.table.return_record(item_I, query_columns)))
         return record_set
 
     """
@@ -57,6 +58,7 @@ class Query:
     def update(self, key, *columns):
         # create index for column if needed
         self.index.create_index(self.table.key)
+        # invalid input
         if len(columns) < 1:
             return
         # create bitmap for schema encoding with 1 in the position of updated column
@@ -66,6 +68,7 @@ class Query:
             if x != None:
                 schema_encoding = schema_encoding + bit
             bit = bit // 2
+        #get corresponding rid from key
         rid = self.index.locate(self.table.key, key)
         ridr = int.from_bytes(rid[0], byteorder = "big")
         self.index.update(rid[0], self.table.return_record(ridr, [1, 1, 1, 1, 1]), *columns)
