@@ -18,5 +18,9 @@ COLUMN_BLOCK_PAGES = 10
 PRIMARY_KEY = 0
 COLUMNS = 1
 
+# tuple indexing for table page metadata (file_offset, num_records)
+FILE_OFFSET = 0
+NUM_RECORDS = 1
+
 def init():
     pass

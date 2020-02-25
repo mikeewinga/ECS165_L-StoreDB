@@ -97,7 +97,7 @@ class DiskManager:
     def __init__(self):
         self.bufferpool = Bufferpool()
         self.directory_path = ""
-        self.active_table_indexes = {}  # { string table_name : {address tuple (int page_range, (int base/tail, int page_num)) : file_offset_bytes }}
+        self.active_table_indexes = {}  # { string table_name : {address tuple (int page_range, (int base/tail, int page_num)) : (file_offset_bytes, num_records) }}
         self.active_table_metadata = {}  # { string table_name: (int primary key index, int num_total_columns) }
 
     def set_directory_path(self, directory_path):
@@ -161,7 +161,7 @@ class DiskManager:
             table_index = self.active_table_indexes[table_name]
             file.seek(file_offset)  # reset file position to start of blank page slot
             file.write(init_TPS_bytes)  # write TPS number
-            table_index[(address.pagerange, address.page)] = file_offset  # add mapping from conceptual address to file offset to table index
+            table_index[(address.pagerange, address.page)] = (file_offset, 0)  # add to table index the mapping from conceptual address to file offset + num_records
             # also load the new page into bufferpool
             in_memory_pg = Page()
             self.bufferpool.add_page(table_name, address, in_memory_pg)
@@ -178,6 +178,8 @@ class DiskManager:
         if (not self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
         self.bufferpool.append_write(table_name, address, value)
+        table_index = self.active_table_indexes[table_name]
+        table_index[(address.pagerange, address.page)][NUM_RECORDS] += 1
 
     def overwrite(self, table_name, address, value):
         if (not self.bufferpool.contains_page(table_name, address)):
@@ -188,6 +190,11 @@ class DiskManager:
         if (not self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
         return self.bufferpool.page_has_capacity(table_name, address)
+
+    def page_num_records(self, table_name, address):
+        table_index = self.active_table_indexes[table_name]
+        num_records = table_index[(address.pagerange, address.page)][NUM_RECORDS]
+        return num_records
 
     """
     evict a page if needed before locating file in memory
@@ -206,7 +213,7 @@ class DiskManager:
         if table_name not in self.active_table_indexes:
             self.load_index_from_disk(table_name)  # load the table's index from file into memory
         table_index = self.active_table_indexes[table_name]
-        file_offset = table_index[(address.pagerange, address.page)]
+        file_offset = table_index[(address.pagerange, address.page)][FILE_OFFSET]
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
         with open(filename, "rb") as file:
             file.seek(file_offset)
@@ -224,9 +231,9 @@ class DiskManager:
             self.active_table_metadata[table_name] = (primary_key, num_total_columns)
             # split each line in file and save as key-value pairs in dictionary index
             for line in file:
-                (page_range_num, base_tail, page_num, file_offset) = line.split()
+                (page_range_num, base_tail, page_num, file_offset, num_records) = line.split()
                 address_tuple = (int(page_range_num), (int(base_tail), int(page_num)))
-                self.active_table_indexes[table_name][address_tuple] = int(file_offset)
+                self.active_table_indexes[table_name][address_tuple] = (int(file_offset), int(num_records))
 
     """
     :param evict_page: key-value pair { (string table_name, int page_range, (int base/tail, int page_num)) : Page() }
@@ -237,7 +244,7 @@ class DiskManager:
         page_num = evict_page[0][2]
         page = evict_page[1]
         table_index = self.active_table_indexes[table_name]
-        file_offset = table_index[(page_range_num, page_num)]
+        file_offset = table_index[(page_range_num, page_num)][FILE_OFFSET]
 
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
         with open(filename, "r+b") as file:  # open file for writing without wiping the file contents
@@ -260,7 +267,8 @@ class DiskManager:
                 index_line = str(address_tuple[0]) + " "\
                              + str(address_tuple[1][0]) + " "\
                              + str(address_tuple[1][1]) + " "\
-                             + str(table_index[address_tuple]) + "\n"
+                             + str(table_index[address_tuple][FILE_OFFSET]) + " "\
+                             + str(table_index[address_tuple][NUM_RECORDS] + "\n"
                 file.write(index_line)
         # del self.active_table_indexes[table_name]
 
