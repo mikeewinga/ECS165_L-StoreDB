@@ -7,7 +7,9 @@ class Database():
     def __init__(self):
         #self.tables = {}  # maps {string name : Table}
         #self.num_tables = 0
-        self.diskManager = DiskManager()
+        global diskManager
+        diskManager = DiskManager()
+        self.diskManager = diskManager
         pass
 
     def open(self, path):
