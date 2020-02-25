@@ -13,7 +13,7 @@ class PageRange:
 
     def __init__(self, prid, start, num_columns):
         self.prid = prid
-        self.tps = 2**64
+        self.tps = 2**64 - 1
         self.cur_tid = self.tps
         self.base = start
         self.cap = start + RANGESIZE
@@ -121,6 +121,7 @@ class PageRange:
         # set the timestamp and schema encoding
         self.pages[address+TIMESTAMP_COLUMN].write(time)
         self.pages[address+SCHEMA_ENCODING_COLUMN].write(tail_schema)
+        self.pages[address+BASE_RID_COLUMN].write(base_rid)
         # copy in record data
         for x in range(self.num_columns):
             self.pages[address+(x+NUM_METADATA_COLUMNS)].write(record.columns[x])
