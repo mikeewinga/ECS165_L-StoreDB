@@ -1,6 +1,6 @@
 from lstore.table import Table, Record
 from lstore.index import Index
-
+from lstore.config import *
 
 class Query:
     """
@@ -56,6 +56,8 @@ class Query:
     """
 
     def update(self, key, *columns):
+        self.table.control.acquire()
+        print("acquire")
         # create index for column if needed
         self.index.create_index(self.table.key)
         # invalid input
@@ -74,6 +76,8 @@ class Query:
         self.index.update(rid, self.table.return_record(rid, [1, 1, 1, 1, 1]), *columns)
         record = Record(0, self.table.key, columns)
         self.table.update(rid, schema_encoding, record)
+        self.table.control.release()
+        print("release")
         #for item in rid:
             #itemr = int.from_bytes(item, byteorder = "big")
             #self.table.update(item, schema_encoding, record)
