@@ -6,6 +6,7 @@ from lstore.pagerange import *
 import datetime
 import copy
 
+
 class Record:
 
     def __init__(self, rid, key, columns):
@@ -60,12 +61,14 @@ class Table:
         data[6] = stamp.second
         return data
 
+
     def insert(self, record):
         prid = self.current_Rid_base//RANGESIZE
         if prid > self.current_Prid:
             self.current_Prid = prid
             self.pageranges[prid] = PageRange(prid, self.current_Rid_base, self.num_columns)
-        self.pageranges[prid].insert(record, self.current_Rid_base, self.get_timestamp())
+
+        self.pageranges[prid].insert(schema, record, self.current_Rid_base, self.get_timestamp())
         self.index.write(self.current_Rid_base, prid)
         self.current_Rid_base = self.current_Rid_base + 1
 

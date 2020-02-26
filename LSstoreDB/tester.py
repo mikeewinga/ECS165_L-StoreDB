@@ -15,7 +15,7 @@ records = {}
 
 seed(3562901)
 
-for i in range(0, 1000):
+for i in range(0, 2500):
     key = 92106429 + randint(0, 9000)
     while key in records:
         key = 92106429 + randint(0, 9000)
@@ -24,7 +24,7 @@ for i in range(0, 1000):
     print('inserted', records[key])
 
 for key in records:
-    record = query.select(key, [1, 1, 1, 1, 1])[0]
+    record = query.select(key, 0, [1, 1, 1, 1, 1])[0]
     error = False
     for i, column in enumerate(record.columns):
         if column != records[key][i]:
@@ -42,7 +42,7 @@ for key in records:
         original = records[key].copy()
         records[key][i] = value
         query.update(key, *updated_columns)
-        record = query.select(key, [1, 1, 1, 1, 1])[0]
+        record = query.select(key, 0, [1, 1, 1, 1, 1])[0]
         error = False
         for j, column in enumerate(record.columns):
             if column != records[key][j]:
@@ -63,4 +63,5 @@ for c in range(0, grades_table.num_columns):
             print('sum error on [', keys[r[0]], ',', keys[r[1]], ']: ', result, ', correct: ', column_sum)
         else:
             print('sum on [', keys[r[0]], ',', keys[r[1]], ']: ', column_sum)
+
 
