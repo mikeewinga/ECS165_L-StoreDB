@@ -19,25 +19,36 @@ def getOffset(schema, col_num):
         bit = bit // 2
     return offset
 
-def merge(page_Range):
+def merge(table, page_Range):
     global control
+    global diskManager
     control.acquire()
     #acquire all required resources that are time critical
-    #give page range new tail record
-    #function to change tail record index
-    control.release()
-
     #clear delete_queue
     page_Range.delete_queue = []
-
     #create copy of base pages (bRID, base schema, user data pages)and insert newTPS in each of them
+    b_pages = {}
+    p_ind = 0
+    step = NUM_METADATA_COLUMNS + mergeRange.num_columns
+    while p_ind <= page_Range.bOffSet:
+        #change 0,0 later
+        b_pages[(0,0+p_ind)] = diskManager.new_page(self.table_name, Address(page_Range.prid, 0, p_ind), 0)
+        b_pages[(0,3+p_ind)] = diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind), 3)
+        for i in range(0..NUM_METADATA_COLUMNS):
+            b_pages[(0,i+p_ind)] = diskManager.new_page(self.table_name, Address(page_Range.prid, 0, p_ind), i)
+        p_ind = p_ind + step
+    print(b_pages.values())
+    """
     mergeRange = copy.deepcopy(page_Range)
-    tid = mergeRange.cur_tid
-
+    #give page range new tail record
+    tid = page_Range.cur_tid
+    #function to change tail record index
+    """
+    control.release()
+    """
     address = mergeRange.index.read(tid)
     t_page = address.pagenumber
     t_row = address.row
-    step = NUM_METADATA_COLUMNS + mergeRange.num_columns
 
     #look at last tail page, potentially not full
     for cur_page in range(t_page, -1, -step):
@@ -74,6 +85,7 @@ def merge(page_Range):
     #handle delete queue
     #handle swapping tal records
     control.release()
+    """
 
 global control
 
@@ -84,6 +96,7 @@ def mergeLoop():
     global diskManager
     global control
     while 1:
+        """
         control.acquire()
         print("nab")
         control.release()
@@ -91,12 +104,13 @@ def mergeLoop():
         """
         if t_ind < len(tables):
             pagenum = len(tables[t_ind].pageranges)
-            #print(pagenum)
+            while pr_ind < pagenum:
+                merge(tables[t_ind].name, tables[t_ind].pageranges[pr_ind])
+                pr_ind = pr_ind + 1
             t_ind = t_ind + 1
         else:
             time.sleep(0)
             t_ind = 0
-        """
 
 
 class Database():
