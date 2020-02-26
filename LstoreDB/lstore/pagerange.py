@@ -20,6 +20,7 @@ class PageRange:
         self.num_columns = num_columns
         self.total_base_phys_pages = num_columns + NUM_METADATA_COLUMNS
         self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
+        self.merge_f = 0
         self.bOffSet = 0
         self.tOffSet = 0
         self.index = PageDirectory()
@@ -38,6 +39,8 @@ class PageRange:
 
     #pass in rid from table
     def insert(self, record, rid, time):
+        if rid == self.cap - 1:
+            self.merge_f = 1
         address = Address(self.prid, 0, self.bOffSet)
         num_records = self.diskManager.page_num_records(self.table_name, address)
         address.row = num_records

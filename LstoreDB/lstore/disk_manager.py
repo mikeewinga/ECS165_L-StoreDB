@@ -152,6 +152,7 @@ class DiskManager:
             for i in range(COLUMN_BLOCK_PAGES):
                 file.seek(file_offset)
                 page_TPS = file.read(DATASIZE)
+                page_TPS = int.from_bytes(page_TPS, byteorder="big", signed="False")
                 if (page_TPS == 0):
                     block_full = False
                     break
