@@ -74,10 +74,10 @@ class Index:
         query_columns = [0] * self.table.num_columns
         query_columns[column_number] = 1
         for i in range(0, numIndexPages+1):  # for all page ranges in table
-            for j in range(0,self.table.pageranges[i].bOffSet+RID_COLUMN,step):  # for all base physical pages in range
+            for j in range(0,self.table.pageranges[i].bOffSet+RID_COLUMN,step):  # for all base physical RID pages in range
                 rid_page_address = Address(i, 0, RID_COLUMN+j)
                 num_records = self.diskManager.page_num_records(self.table.name, rid_page_address)
-                for x in range(1, num_records):  # for all record slots in page starting from 1 (skip 0 because that's the TPS)
+                for x in range(1, num_records):  # for all record slots in RID page starting from 1 (skip 0 because that's the TPS)
                     rid_page_address.row = x
                     # read the rid number from page and convert from bytes to int
                     rid = int.from_bytes(self.diskManager.read(self.table.name, rid_page_address), byteorder='big',signed=False)
@@ -123,6 +123,7 @@ class PageDirectory:
     def read(self, RID):
         if self.indexDict.get(RID):
             return self.indexDict[RID]
+        #raise NameError('page directory did not find the given RID')  # FIXME
         return 0
 
     """
@@ -138,7 +139,7 @@ class Address:
     #Base/Tail flag, Page-range number, Page number, Row number
     def __init__(self, pagerange, flag, pagenumber, row = None):
         self.pagerange = pagerange
-        self.flag = flag
+        self.flag = flag  # values: 0--base, 1--tail, 2--base page copy used for merge
         self.pagenumber = pagenumber
         self.page = (flag, pagenumber)
         self.row = row
@@ -148,3 +149,10 @@ class Address:
         #return ret
         new_page_num = self.page[1] + offset
         return Address(self.pagerange, self.flag, new_page_num, self.row)
+
+    def copy(self):
+        return Address(self.pagerange, self.flag, self.pagenumber, self.row)
+
+    def change_flag(self, flag):
+        self.flag = flag
+        self.page = (flag, self.pagenumber)

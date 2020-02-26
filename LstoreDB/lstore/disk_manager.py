@@ -55,6 +55,20 @@ class Bufferpool:
         self.page_map.move_to_end((table_name, address.pagerange, address.page))
         self.unpin_page(table_name, address)
 
+    """
+    param address: the Address object of the original base page to copy (flag = 0)
+    """
+    def merge_copy_page(self, table_name, address):
+        page = self.page_map[(table_name, address.pagerange, address.page)]
+        new_page = page.copy()
+        # change the base/tail flag to 2, so address refers to merge base page
+        self.page_map[(table_name, address.pagerange, (2, address.pagenumber))] = new_page
+
+    # """
+    # param address: the Address object of the copied base page
+    # """
+    # def merge_replace_page(self, table_name, address):
+
     def page_has_capacity(self, table_name, address):
         return self.page_map[(table_name, address.pagerange, address.page)].has_capacity()
 
@@ -181,6 +195,32 @@ class DiskManager:
                     self.flush_page(evict_page)
             in_memory_pg = Page()
             self.bufferpool.add_page(table_name, address, in_memory_pg)
+        return file_offset
+
+    """
+    param address: flag = 0, original base page
+    """
+    def merge_copy_page(self, table_name, address, column_index):
+        if (not self.bufferpool.contains_page(table_name, address)):
+            self.load_page_from_disk(table_name, address)
+        #FIXME pin page
+        # call on bufferpool to copy the page for the merge thread, checking first if bufferpool needs to evict page
+        if (self.bufferpool.is_full()):
+            # evict page and flush it to disk if dirty
+            evict_page = self.bufferpool.evict()
+            while (len(evict_page) == 0):
+                evict_page = self.bufferpool.evict()
+            if (evict_page[1].dirty):
+                self.flush_page(evict_page)
+        self.bufferpool.merge_copy_page(table_name, address)
+        # allocate a new page in file and save the physical file offset in table_index
+        file_offset = self.new_page(table_name, address, column_index)
+        table_index = self.active_table_indexes[table_name]
+        # change the base/tail flag to 2, so address refers to merge base page
+        table_index[(address.pagerange, (2, address.pagenumber))] = [file_offset, 1]
+        merge_page_address = address.copy()
+        merge_page_address.change_flag(2)
+        return merge_page_address
 
     def delete_page(self, table_name, base_tail, page_num):
         pass #FIXME set TPS to 1 for the page to mark as deleted
