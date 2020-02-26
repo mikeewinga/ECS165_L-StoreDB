@@ -198,12 +198,12 @@ class DiskManager:
         return file_offset
 
     """
-    param address: flag = 0, original base page
+    param address: address of original base page, flag = 0
     """
     def merge_copy_page(self, table_name, address, column_index):
         if (not self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
-        #FIXME pin page
+        self.bufferpool.pin_page(table_name, address)
         # call on bufferpool to copy the page for the merge thread, checking first if bufferpool needs to evict page
         if (self.bufferpool.is_full()):
             # evict page and flush it to disk if dirty
@@ -220,6 +220,7 @@ class DiskManager:
         table_index[(address.pagerange, (2, address.pagenumber))] = [file_offset, 1]
         merge_page_address = address.copy()
         merge_page_address.change_flag(2)
+        self.bufferpool.unpin_page(table_name, address)
         return merge_page_address
 
     def delete_page(self, table_name, base_tail, page_num):
