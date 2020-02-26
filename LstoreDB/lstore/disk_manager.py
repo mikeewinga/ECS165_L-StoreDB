@@ -64,10 +64,22 @@ class Bufferpool:
         # change the base/tail flag to 2, so address refers to merge base page
         self.page_map[(table_name, address.pagerange, (2, address.pagenumber))] = new_page
 
-    # """
-    # param address: the Address object of the copied base page
-    # """
-    # def merge_replace_page(self, table_name, address):
+    """
+    param address: the original base page (flag = 0)
+    """
+    def merge_replace_page(self, table_name, address):
+        orig_page = self.page_map[(table_name, address.pagerange, address.page)]
+        orig_page.pin()
+        merge_address = address.copy()
+        merge_address.change_flag(2)  # change the base/tail flag to 2, so address refers to merge base page
+        merge_page = self.page_map[(table_name, merge_address.pagerange, merge_address.page)]
+        merge_page.pin()
+        # delete the entry for merge page address from page_map
+        del self.page_map[(table_name, merge_address.pagerange, merge_address.page)]
+        # replace the Page() for original page address with the merge_page
+        self.page_map[(table_name, address.pagerange, address.page)] = merge_page
+        orig_page.unpin()
+        merge_page.unpin()
 
     def page_has_capacity(self, table_name, address):
         return self.page_map[(table_name, address.pagerange, address.page)].has_capacity()
@@ -98,14 +110,15 @@ class Bufferpool:
 
     def add_page(self, table_name, address, page):
         self.page_map[(table_name, address.pagerange, address.page)] = page
-        pass
         # self.page_map.move_to_end((table_name, address.pagerange, address.page))
 
     def pin_page(self, table_name, address):
-        self.page_map[(table_name, address.pagerange, address.page)].pin_count += 1
+        #self.page_map[(table_name, address.pagerange, address.page)].pin_count += 1
+        self.page_map[(table_name, address.pagerange, address.page)].pin()
 
     def unpin_page(self, table_name, address):
-        self.page_map[(table_name, address.pagerange, address.page)].pin_count -= 1
+        #self.page_map[(table_name, address.pagerange, address.page)].pin_count -= 1
+        self.page_map[(table_name, address.pagerange, address.page)].unpin()
 
 
 class DiskManager:
@@ -222,6 +235,23 @@ class DiskManager:
         merge_page_address.change_flag(2)
         self.bufferpool.unpin_page(table_name, address)
         return merge_page_address
+
+    """
+    param address: the original base page (flag = 0)
+    """
+    def merge_replace_page(self, table_name, address):
+        if (not self.bufferpool.contains_page(table_name, address)):
+            self.load_page_from_disk(table_name, address)
+        self.bufferpool.merge_replace_page(table_name, address)
+        merge_address = address.copy()
+        merge_address.change_flag(2)
+        table_index = self.active_table_indexes[table_name]
+        # grab the file offset mapped to the merge page address
+        new_file_offset = table_index[(merge_address.pagerange, merge_address.page)][FILE_OFFSET]
+        # replace the old file offset for the original address with new offset
+        table_index[(address.pagerange, address.page)] = new_file_offset
+        # delete merge page address entry from table_index
+        del table_index[(merge_address.pagerange, merge_address.page)]
 
     def delete_page(self, table_name, base_tail, page_num):
         pass #FIXME set TPS to 1 for the page to mark as deleted

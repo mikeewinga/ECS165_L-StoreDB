@@ -18,6 +18,12 @@ class Page:
         copy_page.pin_count = self.pin_count
         return copy_page
 
+    def pin(self):
+        self.pin_count += 1
+
+    def unpin(self):
+        self.pin_count -= 1
+
     """
     Checks if there is space left in page
     """
