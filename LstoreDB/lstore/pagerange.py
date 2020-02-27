@@ -129,6 +129,7 @@ class PageRange:
         # set the timestamp and schema encoding
         self.diskManager.append_write(self.table_name, address+TIMESTAMP_COLUMN, time)
         self.diskManager.append_write(self.table_name, address+SCHEMA_ENCODING_COLUMN, tail_schema)
+        self.diskManager.append_write(self.table_name, address+BASE_RID_COLUMN, base_rid)
         # copy in record data
         for x in range(self.num_columns):
             self.diskManager.append_write(self.table_name, address+(x+NUM_METADATA_COLUMNS), record.columns[x])

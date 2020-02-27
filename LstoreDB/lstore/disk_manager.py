@@ -214,9 +214,9 @@ class DiskManager:
     param address: address of original base page, flag = 0
     """
     def merge_copy_page(self, table_name, address, column_index):
-        if (not self.bufferpool.contains_page(table_name, address)):
-            self.load_page_from_disk(table_name, address)
-        self.bufferpool.pin_page(table_name, address)
+        if (not self.bufferpool.contains_page(table_name, address+column_index)):
+            self.load_page_from_disk(table_name, address+column_index)
+        self.bufferpool.pin_page(table_name, address+column_index)
         # call on bufferpool to copy the page for the merge thread, checking first if bufferpool needs to evict page
         if (self.bufferpool.is_full()):
             # evict page and flush it to disk if dirty
@@ -225,16 +225,18 @@ class DiskManager:
                 evict_page = self.bufferpool.evict()
             if (evict_page[1].dirty):
                 self.flush_page(evict_page)
-        self.bufferpool.merge_copy_page(table_name, address)
+        self.bufferpool.merge_copy_page(table_name, address+column_index)
+        maddress = address.copy()
+        maddress.change_flag(2)
+        maddress = maddress + column_index
         # allocate a new page in file and save the physical file offset in table_index
-        file_offset = self.new_page(table_name, address, column_index)
+        file_offset = self.new_page(table_name, maddress, column_index)
         table_index = self.active_table_indexes[table_name]
+        print(maddress.page)
         # change the base/tail flag to 2, so address refers to merge base page
-        table_index[(address.pagerange, (2, address.pagenumber))] = [file_offset, 1]
-        merge_page_address = address.copy()
-        merge_page_address.change_flag(2)
+        table_index[(maddress.pagerange, (2, maddress.pagenumber))] = [file_offset, 1]
         self.bufferpool.unpin_page(table_name, address)
-        return merge_page_address
+        return maddress
 
     """
     param address: the original base page (flag = 0)
@@ -249,7 +251,7 @@ class DiskManager:
         # grab the file offset mapped to the merge page address
         new_file_offset = table_index[(merge_address.pagerange, merge_address.page)][FILE_OFFSET]
         # replace the old file offset for the original address with new offset
-        table_index[(address.pagerange, address.page)] = new_file_offset
+        table_index[(address.pagerange, address.page)][FILE_OFFSET] = new_file_offset
         # delete merge page address entry from table_index
         del table_index[(merge_address.pagerange, merge_address.page)]
 
