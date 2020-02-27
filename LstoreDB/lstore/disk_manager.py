@@ -125,7 +125,7 @@ class DiskManager:
     def __init__(self):
         self.bufferpool = Bufferpool()
         self.directory_path = ""
-        self.active_table_indexes = {}  # { string table_name : {address tuple (int page_range, (int base/tail, int page_num)) : [file_offset_bytes, num_records, col_number, rid_start] }}
+        self.active_table_indexes = {}  # { string table_name : {address tuple (int page_range, (int base/tail, int page_num)) : [file_offset_bytes, num_records] }}
         self.active_table_metadata = {}  # { string table_name: (int primary key index, int num_user_columns) }
 
     def set_directory_path(self, directory_path):
@@ -167,7 +167,7 @@ class DiskManager:
         else:
             return ()
 
-    def new_page(self, table_name, address, column_index, rid_start = 0):
+    def new_page(self, table_name, address, column_index):
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
         orig_filesize = os.path.getsize(filename)
         total_columns = self.active_table_metadata[table_name][COLUMNS] + NUM_METADATA_COLUMNS
@@ -197,7 +197,7 @@ class DiskManager:
             file.write(init_TPS_bytes)  # write TPS number
             # add to table index the mapping from conceptual address to file offset + num_records
             # -- note that num_records is initially 1 because the TPS is first data entry
-            table_index[(address.pagerange, address.page)] = [file_offset, 1, column_index, rid_start]
+            table_index[(address.pagerange, address.page)] = [file_offset, 1]
             # also load the new page into bufferpool, checking first if bufferpool needs to evict a page
             if (self.bufferpool.is_full()):
                 # evict page and flush it to disk if dirty
@@ -227,12 +227,10 @@ class DiskManager:
                 self.flush_page(evict_page)
         self.bufferpool.merge_copy_page(table_name, address)
         # change the base/tail flag to 2, so address refers to merge base page
-        table_index = self.active_table_indexes[table_name]
-        rid_start = table_index[(address.pagerange, address.page)][RID_START]
         merge_page_address = address.copy()
         merge_page_address.change_flag(2)
         # allocate a new page in file
-        self.new_page(table_name, merge_page_address, column_index, rid_start)
+        self.new_page(table_name, merge_page_address, column_index)
         self.bufferpool.unpin_page(table_name, address)
         return merge_page_address
 
