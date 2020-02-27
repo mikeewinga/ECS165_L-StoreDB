@@ -5,11 +5,6 @@ from lstore.config import *
 #from lstore.index import Address
 from lstore.page import Page
 
-BIN_EXTENSION = ".bin"
-INDEX_EXTENSION = "_index.txt"
-PAGE_DIR_EXTENSION = "_pageDir.txt"
-COLUMN_BLOCK_BYTES = PAGESIZE * COLUMN_BLOCK_PAGES
-
 class Bufferpool:
     def __init__(self):
         self.max_pages = BUFFERPOOL_SIZE
@@ -366,21 +361,37 @@ class DiskManager:
             file.seek(file_offset)
             file.write(page.data)
 
-    """
-    note that this function doesn't delete the entry from dictionary, just flushes it to disk
-    """
-    def flush_index_metadata(self, table_name, current_rid_base, current_rid_tail, cur_prid):
+    def flush_table_metadata(self, table_name, current_rid_base, current_rid_tail, cur_prid):
         table_metadata = self.active_table_metadata[table_name]
-        table_index = self.active_table_indexes[table_name]
         filename = self.directory_path + table_name + INDEX_EXTENSION # file for table index
         with open(filename, "w") as file:  # open file and wipe the contents, then rewrite everything
             # copy the metadata into file
-            metadata_line = str(table_metadata[PRIMARY_KEY]) + " "\
-                            + str(table_metadata[COLUMNS]) + " "\
-                            + str(current_rid_base) + " "\
-                            + str(current_rid_tail) + " "\
+            metadata_line = str(table_metadata[PRIMARY_KEY]) + " " \
+                            + str(table_metadata[COLUMNS]) + " " \
+                            + str(current_rid_base) + " " \
+                            + str(current_rid_tail) + " " \
                             + str(cur_prid) + "\n"
             file.write(metadata_line)
+
+    """
+    :param metadata_dict: { int prid : (int bOffset, int tOffset) }
+    """
+    def flush_pagerange_metadata(self, table_name, metadata_dict):
+        filename = self.directory_path + table_name + INDEX_EXTENSION # file for table index
+        with open(filename, "a") as file:
+            for prid in metadata_dict:
+                page_range_line = str(prid) + " "\
+                                  + str(metadata_dict[prid][0]) + " "\
+                                  + str(metadata_dict[prid][1]) + "\n"
+                file.write(page_range_line)
+
+    """
+    note that this function doesn't delete the entry from dictionary, just flushes it to disk
+    """
+    def flush_index(self, table_name, current_rid_base, current_rid_tail, cur_prid):
+        table_index = self.active_table_indexes[table_name]
+        filename = self.directory_path + table_name + INDEX_EXTENSION # file for table index
+        with open(filename, "a") as file:  # open file and append
             # copy the index into file
             for address_tuple in table_index:
                 index_line = str(address_tuple[0]) + " "\

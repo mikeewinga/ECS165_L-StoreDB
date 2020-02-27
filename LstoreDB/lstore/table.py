@@ -114,12 +114,20 @@ class Table:
         self.pageranges[prid].delete(base_rid)
 
     def close(self):
-        overall_directory = {}
+        overall_page_directory = {}
+        page_range_metadata = {}
         for prid in self.pageranges:
             pagedir_dict = self.pageranges[prid].get_pagedir_dict()
-            overall_directory.update(pagedir_dict)
-        self.diskManager.flush_page_directory(self.name, overall_directory)
-        self.diskManager.flush_index_metadata(self.name, self.current_Rid_base, self.current_Rid_tail, self.current_Prid)
+            overall_page_directory.update(pagedir_dict)
+            page_range_metadata[prid] = (self.pageranges[prid].bOffSet, self.pageranges[prid].tOffSet)
+
+        # flush table and page range metadata into table index file
+        self.diskManager.flush_table_metadata(self.name, self.current_Rid_base, self.current_Rid_tail, self.current_Prid)
+        self.diskManager.flush_pagerange_metadata(self.name, page_range_metadata)
+        self.diskManager.flush_index(self.name, self.current_Rid_base, self.current_Rid_tail, self.current_Prid)
+
+        # flush page ranges' page directories into page directory file
+        self.diskManager.flush_page_directory(self.name, overall_page_directory)
 
     def debugRead(self, index):
         offSet = (int)(index // (PAGESIZE/DATASIZE))*(4+self.num_columns) # offset is page index
