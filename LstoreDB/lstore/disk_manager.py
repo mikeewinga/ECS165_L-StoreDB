@@ -249,7 +249,7 @@ class DiskManager:
         # grab the file offset mapped to the merge page address
         new_file_offset = table_index[(merge_address.pagerange, merge_address.page)][FILE_OFFSET]
         # replace the old file offset for the original address with new offset
-        table_index[(address.pagerange, address.page)] = new_file_offset
+        table_index[(address.pagerange, address.page)][FILE_OFFSET] = new_file_offset
         # delete merge page address entry from table_index
         del table_index[(merge_address.pagerange, merge_address.page)]
 
