@@ -340,8 +340,9 @@ class DiskManager:
         self.active_table_indexes[table_name] = {}
         with open(index_filename, "r") as file:
             # read primary key index and num columns metadata
-            primary_key = next(file)
-            num_user_columns = next(file)
+            metadata_line = next(file)
+            # FIXME do something with the cur_rid_base, etc to recreate Table
+            (primary_key, num_user_columns, current_rid_base, current_rid_tail, current_prid) = metadata_line.split()
             self.active_table_metadata[table_name] = (primary_key, num_user_columns)
             # split each line in file and save as key-value pairs in dictionary index
             for line in file:
@@ -368,14 +369,18 @@ class DiskManager:
     """
     note that this function doesn't delete the entry from dictionary, just flushes it to disk
     """
-    def flush_index_metadata(self, table_name):
+    def flush_index_metadata(self, table_name, current_rid_base, current_rid_tail, cur_prid):
         table_metadata = self.active_table_metadata[table_name]
         table_index = self.active_table_indexes[table_name]
         filename = self.directory_path + table_name + INDEX_EXTENSION # file for table index
         with open(filename, "w") as file:  # open file and wipe the contents, then rewrite everything
             # copy the metadata into file
-            file.write(str(table_metadata[PRIMARY_KEY]) + "\n")
-            file.write(str(table_metadata[COLUMNS]) + "\n")
+            metadata_line = str(table_metadata[PRIMARY_KEY]) + " "\
+                            + str(table_metadata[COLUMNS]) + " "\
+                            + str(current_rid_base) + " "\
+                            + str(current_rid_tail) + " "\
+                            + str(cur_prid) + "\n"
+            file.write(metadata_line)
             # copy the index into file
             for address_tuple in table_index:
                 index_line = str(address_tuple[0]) + " "\
@@ -405,7 +410,6 @@ class DiskManager:
             if (evict_page[1].dirty):
                 self.flush_page(evict_page)
         # flush the table indexes to config files and then clear dictionary of indexes
-        for table_name in self.active_table_indexes.keys():
-            self.flush_index_metadata(table_name)
+        # for table_name in self.active_table_indexes.keys():
+        #     self.flush_index_metadata(table_name)
         self.active_table_indexes.clear()
-        #FIXME flush_page_directory()
