@@ -9,26 +9,21 @@ from lstore.config import *
 
 class Index:
 
-    """
-    indexDict as index: {key : RID}
-    indexDict as page directory: {RID : [(base/tail, page_num), record_offset]}
-    -- base=0 tail=1
-    """
     def __init__(self, table):
         self.table = table
         self.diskManager = table.diskManager
         self.hasIndex = [0]*table.num_columns
-        #self.indexDict = [{}]*table.num_columns  # each dictionary maps {key value : list of RID's}
+        #self.indexDict = [{}]*table.num_columns
         self.indexDict = []
         for i in range(table.num_columns):
-            self.indexDict.append({})
+            self.indexDict.append({})  # each dictionary maps {key value : list of RID's}
+
     """
     # returns the location of all records with the given value
     # i.e. an RID of base page
     :param value: user-given key
     :return: list of RID's
     """
-
     def locate(self, column, value):
         #intList = [] # saves the RID's of matching records
         if self.indexDict[column].get(value):  # check if given key exists in indexDict
@@ -93,9 +88,13 @@ class Index:
     """
     deletes record from index
     """
-    def delete(self, RID, column_number=0):
-        if self.indexDict[column_number].get(RID):
-            del self.indexDict[column_number][RID]
+    def delete(self, key, RID, column_number):
+        if self.indexDict[column_number].get(key):
+            ridList = self.indexDict[column_number][key]
+            if len(ridList) == 1:
+                del self.indexDict[column_number][key]
+            else:
+                ridList.remove(RID)
             return 1
         return 0
 
@@ -104,7 +103,7 @@ class Index:
     """
 
     def drop_index(self, column_number):
-        pass
+        self.indexDict[column_number].clear()
 
 class PageDirectory:
     def __init__(self):

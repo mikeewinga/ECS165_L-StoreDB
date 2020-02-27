@@ -14,12 +14,13 @@ class Query:
     """
     Deletes key from database and index
     """
-    def delete(self, key):
-        rid = self.index.locate(0, key)
-        rid = int.from_bytes(rid[0], byteorder = "big")
-        self.index.delete(key, self.table.key)
-        self.table.delete(rid[0])
-        
+    def delete(self, primary_key):
+        rid = self.index.locate(self.table.key, primary_key)[0]
+        columns_wanted = [1] * self.table.num_columns
+        record = self.table.return_record(rid, columns_wanted)
+        for col_number in range(self.table.num_columns):
+            self.index.delete(record[col_number], rid, col_number)
+        self.table.delete(rid)
 
     """
     # Insert a record with specified columns
