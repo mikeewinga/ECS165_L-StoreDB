@@ -165,3 +165,6 @@ class PageRange:
             # get next RID from indirection column
             next = self.diskManager.read(self.table_name, address)
             next = int.from_bytes(next, byteorder = "big")
+
+    def get_pagedir_dict(self):
+        return self.index.indexDict

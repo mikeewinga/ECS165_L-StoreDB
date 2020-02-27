@@ -38,7 +38,10 @@ class Database():
         pass
 
     def close(self):
+        for tbl in tables:
+            tbl.flush_page_directory()
         self.diskManager.close()
+        print("database closed\n")
         pass
 
     """

@@ -7,6 +7,7 @@ from lstore.page import Page
 
 BIN_EXTENSION = ".bin"
 INDEX_EXTENSION = "_index.txt"
+PAGE_DIR_EXTENSION = "_pageDir.txt"
 COLUMN_BLOCK_BYTES = PAGESIZE * COLUMN_BLOCK_PAGES
 
 class Bufferpool:
@@ -154,6 +155,8 @@ class DiskManager:
             # add entries to the metadata dictionaries for the new table
             self.active_table_metadata[table_name] = (primary_key, num_user_columns)
             self.active_table_indexes[table_name] = {}
+            filename = self.directory_path + table_name + PAGE_DIR_EXTENSION  # page directory config file
+            with open(filename, "x") as file: pass
             return True
         except FileExistsError:
             return False
@@ -163,6 +166,7 @@ class DiskManager:
                 and os.path.exists(self.directory_path + table_name + BIN_EXTENSION):
             #load the index into active_table_indexes
             self.load_index_from_disk(table_name)
+            # FIXME self.load_pagedir_from_disk()
             return self.active_table_metadata[table_name]
         else:
             return ()
@@ -382,6 +386,17 @@ class DiskManager:
                 file.write(index_line)
         # del self.active_table_indexes[table_name]
 
+    def flush_page_directory(self, table_name, pagedir_dict):
+        filename = self.directory_path + table_name + PAGE_DIR_EXTENSION # file for page directory
+        with open(filename, "w") as file:
+            for rid, address in pagedir_dict.items():
+                dir_line = str(rid) + " " \
+                             + str(address.pagerange) + " " \
+                             + str(address.flag) + " " \
+                             + str(address.pagenumber) + " " \
+                             + str(address.row) + "\n"
+                file.write(dir_line)
+
     def close(self):
         # empty the bufferpool
         while (not self.bufferpool.is_empty()):
@@ -393,3 +408,4 @@ class DiskManager:
         for table_name in self.active_table_indexes.keys():
             self.flush_index_metadata(table_name)
         self.active_table_indexes.clear()
+        #FIXME flush_page_directory()
