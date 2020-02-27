@@ -125,8 +125,8 @@ class DiskManager:
     def __init__(self):
         self.bufferpool = Bufferpool()
         self.directory_path = ""
-        self.active_table_indexes = {}  # { string table_name : {address tuple (int page_range, (int base/tail, int page_num)) : [file_offset_bytes, num_records] }}
-        self.active_table_metadata = {}  # { string table_name: (int primary key index, int num_total_columns) }
+        self.active_table_indexes = {}  # { string table_name : {address tuple (int page_range, (int base/tail, int page_num)) : [file_offset_bytes, num_records, col_number, rid_start] }}
+        self.active_table_metadata = {}  # { string table_name: (int primary key index, int num_user_columns) }
 
     def set_directory_path(self, directory_path):
         self.directory_path = directory_path + "/"
@@ -150,9 +150,9 @@ class DiskManager:
             filename = self.directory_path + table_name + INDEX_EXTENSION  # index/config file for table
             with open(filename, "x") as file:
                 file.write(str(primary_key) + "\n")  # save primary key column number
-                file.write(str(num_user_columns + NUM_METADATA_COLUMNS) + "\n")  # save total number of columns
+                file.write(str(num_user_columns) + "\n")  # save number of user columns
             # add entries to the metadata dictionaries for the new table
-            self.active_table_metadata[table_name] = (primary_key, num_user_columns + NUM_METADATA_COLUMNS)
+            self.active_table_metadata[table_name] = (primary_key, num_user_columns)
             self.active_table_indexes[table_name] = {}
             return True
         except FileExistsError:
@@ -167,10 +167,10 @@ class DiskManager:
         else:
             return ()
 
-    def new_page(self, table_name, address, column_index):
+    def new_page(self, table_name, address, column_index, rid_start = 0):
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
         orig_filesize = os.path.getsize(filename)
-        total_columns = self.active_table_metadata[table_name][COLUMNS]
+        total_columns = self.active_table_metadata[table_name][COLUMNS] + NUM_METADATA_COLUMNS
         column_set_size = COLUMN_BLOCK_BYTES * total_columns
         file_offset = orig_filesize - column_set_size + (COLUMN_BLOCK_BYTES * column_index)
 
@@ -197,7 +197,7 @@ class DiskManager:
             file.write(init_TPS_bytes)  # write TPS number
             # add to table index the mapping from conceptual address to file offset + num_records
             # -- note that num_records is initially 1 because the TPS is first data entry
-            table_index[(address.pagerange, address.page)] = [file_offset, 1]
+            table_index[(address.pagerange, address.page)] = [file_offset, 1, column_index, rid_start]
             # also load the new page into bufferpool, checking first if bufferpool needs to evict a page
             if (self.bufferpool.is_full()):
                 # evict page and flush it to disk if dirty
@@ -226,6 +226,29 @@ class DiskManager:
             if (evict_page[1].dirty):
                 self.flush_page(evict_page)
         self.bufferpool.merge_copy_page(table_name, address)
+        # change the base/tail flag to 2, so address refers to merge base page
+        table_index = self.active_table_indexes[table_name]
+        rid_start = table_index[(address.pagerange, address.page)][RID_START]
+        merge_page_address = address.copy()
+        merge_page_address.change_flag(2)
+        # allocate a new page in file
+        self.new_page(table_name, merge_page_address, column_index, rid_start)
+        self.bufferpool.unpin_page(table_name, address)
+        return merge_page_address
+
+    """def merge_copy_page(self, table_name, address, column_index):
+        if (not self.bufferpool.contains_page(table_name, address)):
+            self.load_page_from_disk(table_name, address)
+        self.bufferpool.pin_page(table_name, address)
+        # call on bufferpool to copy the page for the merge thread, checking first if bufferpool needs to evict page
+        if (self.bufferpool.is_full()):
+            # evict page and flush it to disk if dirty
+            evict_page = self.bufferpool.evict()
+            while (len(evict_page) == 0):
+                evict_page = self.bufferpool.evict()
+            if (evict_page[1].dirty):
+                self.flush_page(evict_page)
+        self.bufferpool.merge_copy_page(table_name, address)
         # allocate a new page in file and save the physical file offset in table_index
         file_offset = self.new_page(table_name, address, column_index)
         table_index = self.active_table_indexes[table_name]
@@ -234,7 +257,7 @@ class DiskManager:
         merge_page_address = address.copy()
         merge_page_address.change_flag(2)
         self.bufferpool.unpin_page(table_name, address)
-        return merge_page_address
+        return merge_page_address"""
 
     """
     param address: the original base page (flag = 0)
@@ -316,8 +339,8 @@ class DiskManager:
         with open(index_filename, "r") as file:
             # read primary key index and num columns metadata
             primary_key = next(file)
-            num_total_columns = next(file)
-            self.active_table_metadata[table_name] = (primary_key, num_total_columns)
+            num_user_columns = next(file)
+            self.active_table_metadata[table_name] = (primary_key, num_user_columns)
             # split each line in file and save as key-value pairs in dictionary index
             for line in file:
                 (page_range_num, base_tail, page_num, file_offset, num_records) = line.split()

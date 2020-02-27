@@ -21,6 +21,8 @@ COLUMNS = 1
 # tuple indexing for table page metadata (file_offset, num_records)
 FILE_OFFSET = 0
 NUM_RECORDS = 1
+COLUMN_INDEX = 2
+RID_START = 3
 
 def init():
     pass
