@@ -18,8 +18,10 @@ class Index:
         self.table = table
         self.diskManager = table.diskManager
         self.hasIndex = [0]*table.num_columns
-        self.indexDict = [{}]*table.num_columns  # each dictionary maps {key value : list of RID's}
-
+        #self.indexDict = [{}]*table.num_columns  # each dictionary maps {key value : list of RID's}
+        self.indexDict = []
+        for i in range(table.num_columns):
+            self.indexDict.append({})
     """
     # returns the location of all records with the given value
     # i.e. an RID of base page
