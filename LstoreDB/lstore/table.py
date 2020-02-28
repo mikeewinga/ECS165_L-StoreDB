@@ -98,7 +98,7 @@ class Table:
         # IF page range id is higher than current max prid -> make new page range
         if prid > self.current_Prid:
             self.current_Prid = prid
-            self.pageranges[prid] = PageRange(self.name, prid, self.current_Rid_base, self.num_columns, self.diskManager)
+            self.pageranges[prid] = PageRange(self.name, prid, self.num_columns, self.diskManager, True)
         #insert record into the pagerange with rid and current time
         self.pageranges[prid].insert(record, self.current_Rid_base, self.get_timestamp())
         # update rid->page range id index

@@ -77,10 +77,8 @@ class Database():
         #table_metadata = self.diskManager.open_table_file(name)
         #if (len(table_metadata) != 0):  # the table file and metadata exist
         table = Table(name, self.diskManager)
-        self.diskManager.open_table_file(name, table)
-        #table.diskManager.load_pagedir_from_disk(name, table, table.pageranges, table_metadata[PRANGE_METADATA])
-        tables.append(table)
-
-        # FIXME return table
-        #else:
-            #return None
+        if (self.diskManager.open_table_file(name, table) == None):
+            return None
+        else:
+            tables.append(table)
+            return table

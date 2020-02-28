@@ -164,15 +164,14 @@ class DiskManager:
         if not (os.path.exists(self.directory_path + table_name + INDEX_EXTENSION)
                 and os.path.exists(self.directory_path + table_name + BIN_EXTENSION)
                 and os.path.exists(self.directory_path + table_name + PAGE_DIR_EXTENSION)):
-            return ()
-            # return None
+            return None
         # else the files exist
         # load the index into active_table_indexes
         self.load_index_from_disk(table_name)
         table_metadata = self.active_table_metadata[table_name]
         table.set_table_metadata(table_metadata[PRIMARY_KEY], table_metadata[COLUMNS], table_metadata[BASE_RID], table_metadata[TAIL_RID], table_metadata[PRID])
         self.load_pagedir_from_disk(table_name, table)
-        return self.active_table_metadata[table_name]  # FIXME
+        return table
 
     def new_page(self, table_name, address, column_index):
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
@@ -337,12 +336,21 @@ class DiskManager:
                 self.active_table_indexes[table_name][address_tuple] = [file_offset, num_records]
 
     def load_pagedir_from_disk(self, table_name, table):
+        # call on table to create new page ranges and set each range's metadata
         table_metadata = self.active_table_metadata[table_name]
         num_page_ranges = table_metadata[PRID] + 1
         prange_metadata = table_metadata[PRANGE_METADATA]
         for prid in range(num_page_ranges):
             table.add_page_range(prid, prange_metadata[prid][BOFFSET], prange_metadata[prid][TOFFSET])
         #FIXME do more here
+        # read in page directory and add into table's and page range's page directories
+        dir_file = self.directory_path + table_name + PAGE_DIR_EXTENSION
+        with open(dir_file, "r") as file:
+            for line in file:
+                rid, pagerange_num, flag, pagenumber, row = map(int, line.split())
+                address = Address(pagerange_num, flag, pagenumber, row)
+                table.add_pagedir_entry(rid, pagerange_num)
+                table.get_page_range(pagerange_num).add_pagedir_entry(rid, address)
 
     # def load_pagedir_from_disk(self, table_name, table_class, pagerange_class, pagerange_metadata):
     #     dir_file = self.directory_path + table_name + PAGE_DIR_EXTENSION
