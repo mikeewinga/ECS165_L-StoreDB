@@ -5,6 +5,7 @@ from lstore.config import *
 #from lstore.index import Address
 from lstore.page import Page
 import copy
+from lstore.index import Address
 
 BIN_EXTENSION = ".bin"
 INDEX_EXTENSION = "_index.txt"
@@ -61,8 +62,7 @@ class Bufferpool:
     """
     def merge_copy_page(self, table_name, address):
         page = self.page_map[(table_name, address.pagerange, address.page)]
-        #new_page = page.copy()
-        new_page = copy.deepcopy(page)
+        new_page = page.copy()
         # change the base/tail flag to 2, so address refers to merge base page
         self.page_map[(table_name, address.pagerange, (2, address.pagenumber))] = new_page
 
@@ -227,7 +227,7 @@ class DiskManager:
                 evict_page = self.bufferpool.evict()
             if (evict_page[1].dirty):
                 self.flush_page(evict_page)
-        self.bufferpool.merge_copy_page(table_name, address+column_index)
+        #self.bufferpool.merge_copy_page(table_name, address+column_index)
         maddress = address.copy()
         maddress.change_flag(2)
         maddress = maddress + column_index
@@ -237,6 +237,7 @@ class DiskManager:
         #print(maddress.page)
         # change the base/tail flag to 2, so address refers to merge base page
         table_index[(maddress.pagerange, maddress.page)] = [file_offset, 1]
+        self.bufferpool.merge_copy_page(table_name, address+column_index)
         self.bufferpool.unpin_page(table_name, address+column_index)
         return maddress
 
@@ -260,7 +261,6 @@ class DiskManager:
     def debug_print_page(self, table_name, address):
         if (not self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
-        print(address.page)
         for i in range(1, 512):
             address.row = i
             print(int.from_bytes(self.bufferpool.read(table_name, address),byteorder="big"))

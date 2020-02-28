@@ -22,6 +22,7 @@ class PageRange:
         self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
         self.bOffSet = 0
         self.tOffSet = 0
+        self.merge_f = 0
         self.index = PageDirectory()
         self.delete_queue = []
         # self.pages = set()  # FIXME necessary? hash set recording (base/tail, page num) for every existing page in range
@@ -56,6 +57,8 @@ class PageRange:
             self.diskManager.append_write(self.table_name, address + (x+NUM_METADATA_COLUMNS), record.columns[x])
         # expand new base pages if needed
         if not self.diskManager.page_has_capacity(self.table_name, address):
+            if rid == self.cap-1:
+                self.merge_f = 1
             self.bOffSet = self.bOffSet + self.num_columns + NUM_METADATA_COLUMNS
             for x in range(self.num_columns + NUM_METADATA_COLUMNS):
                 base_address = Address(self.prid, 0, x + self.bOffSet)

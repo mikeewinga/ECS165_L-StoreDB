@@ -35,7 +35,7 @@ class Table:
     :param num_columns: int     #Number of Columns: all columns are integer
     :param key: int             #Index of table key in columns
     """
-    def __init__(self, name, key, num_columns, diskManager):
+    def __init__(self, name, key, num_columns, diskManager, control):
         self.name = name
         self.key = key
         self.num_columns = num_columns
@@ -44,6 +44,7 @@ class Table:
         self.current_Rid_base = 1
         self.current_Rid_tail = 2**64 - 1
         self.current_Prid = 0
+        self.control = control
         self.pageranges = {}
         self.pageranges[0] = PageRange(self.name, 0, self.current_Rid_base, num_columns, diskManager)
         self.index = PageDirectory()
@@ -66,6 +67,7 @@ class Table:
     # update rid -> page range id index
     """
     def insert(self, record):
+        self.control.acquire()
         #handles page range indexing and allocating page ranges
         prid = (self.current_Rid_base-1)//RANGESIZE
         # IF page range id is higher than current max prid -> make new page range
@@ -77,6 +79,7 @@ class Table:
         # update rid->page range id index
         self.index.write(self.current_Rid_base, prid)
         self.current_Rid_base = self.current_Rid_base + 1
+        self.control.release()
 
 
     """
@@ -99,19 +102,25 @@ class Table:
         return offset
 
     def return_record(self, rid, col_wanted):
+        self.control.acquire()
         record_wanted = []
         prid = self.index.read(rid)
+        self.control.release()
         return self.pageranges[prid].return_record(rid, col_wanted)
 
     def update(self, base_rid, tail_schema, record):
+        self.control.acquire()
         prid = self.index.read(base_rid)
         self.pageranges[prid].update(base_rid, tail_schema, record, self.current_Rid_tail, self.get_timestamp())
         self.current_Rid_tail = self.current_Rid_tail - 1
+        self.control.release()
 
     def delete(self, base_rid):
+        self.control.acquire()
         prid = self.index.read(base_rid)
         self.index.delete(base_rid)
         self.pageranges[prid].delete(base_rid)
+        self.control.release()
 
     def debugRead(self, index):
         offSet = (int)(index // (PAGESIZE/DATASIZE))*(4+self.num_columns) # offset is page index

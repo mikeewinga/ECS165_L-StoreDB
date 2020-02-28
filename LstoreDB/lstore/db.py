@@ -37,26 +37,17 @@ def merge(table, page_Range):
     
     while p_ind < page_Range.bOffSet:
         for i in range(0, page_Range.num_columns+NUM_METADATA_COLUMNS):
-            b_pages[(0,i+p_ind)] = diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind), i)
-        """
-        b_pages[(0,3+p_ind)] = diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind), 3)
-        for i in range(0,page_Range.num_columns):
-            b_pages[(0,i+p_ind+NUM_METADATA_COLUMNS)] = diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind), i+NUM_METADATA_COLUMNS)
-        """
+            b_pages[i+p_ind] = diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind), i)
         p_ind = p_ind + step
 
-    #control.release()
-    address = mindex.read(2+(page_Range.prid*RANGESIZE))
-    for x in range(0, page_Range.num_columns+NUM_METADATA_COLUMNS):
-        value = diskManager.read(table, address+x)
-        value = int.from_bytes(value, byteorder = "big")
-        print(value)
+    control.release()
+    needs = [1,3]
+    for i in range(0,page_Range.num_columns):
+        needs.append(NUM_METADATA_COLUMNS+i)
     address = mindex.read(tid)
     t_page = address.pagenumber
     t_row = address.row
-    bpr = diskManager.read(table, Address(page_Range.prid, 2, 1, 2))
-    print("asdf",bpr)
-    #print(t_page, t_row, page_Range.tOffSet, tid)
+
     #diskManager.debug_print_page(table, b_pages[(0, 1)])
     #look at last tail page, potentially not full
     for cur_page in range(t_page, -1, -step):
@@ -90,22 +81,16 @@ def merge(table, page_Range):
             #mergeRange.pages[baddress+SCHEMA_ENCODING_COLUMN].overwrite_record(baddress.row, resultingBaseSchema)
         t_row = 511
     p_ind = 0
-
+    control.acquire()
     while p_ind < page_Range.bOffSet:
-        for x in range(0,page_Range.num_columns+NUM_METADATA_COLUMNS):
+        for x in needs:
             address = Address(page_Range.prid, 0, p_ind+x)
             diskManager.merge_replace_page(table, address)
         p_ind = p_ind + step
-    address = mindex.read(2+(page_Range.prid*RANGESIZE))
-    for x in range(0, page_Range.num_columns+NUM_METADATA_COLUMNS):
-        value = diskManager.read(table, address+x)
-        value = int.from_bytes(value, byteorder = "big")
-        print(value)
-    
     #page_Range.pages = mergeRange.pages
     #handle delete queue
     #handle swapping tal records
-    #control.release()
+    control.release()
 
 global control
 
@@ -119,7 +104,7 @@ def mergeLoop():
         if t_ind < len(tables):
             pagenum = len(tables[t_ind].pageranges)
             while pr_ind < pagenum:
-                if(tables[t_ind].pageranges[pr_ind].tOffSet):
+                if(tables[t_ind].pageranges[pr_ind].merge_f and tables[t_ind].pageranges[pr_ind].tOffSet):
                     merge(tables[t_ind].name, tables[t_ind].pageranges[pr_ind])
                 pr_ind = pr_ind + 1
             pr_ind = 0
@@ -160,7 +145,7 @@ class Database():
     """
     def create_table(self, name, num_columns, key):
         if (self.diskManager.new_table_file(name, key, num_columns)):  # check if new table file was successfully created
-            table = Table(name, key, num_columns, self.diskManager)
+            table = Table(name, key, num_columns, self.diskManager, self.control)
             tables.append(table)
             return table
         else:
