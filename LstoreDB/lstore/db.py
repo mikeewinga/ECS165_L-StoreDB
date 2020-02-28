@@ -39,6 +39,8 @@ def merge(table, page_Range):
         for i in range(0, page_Range.num_columns+NUM_METADATA_COLUMNS):
             b_pages[i+p_ind] = diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind), i)
         p_ind = p_ind + step
+        
+    #page_Range.merge_helper()
 
     control.release()
     needs = [1,3]

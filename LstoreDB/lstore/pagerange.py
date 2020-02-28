@@ -64,6 +64,11 @@ class PageRange:
                 base_address = Address(self.prid, 0, x + self.bOffSet)
                 self.diskManager.new_page(self.table_name, base_address, x)
 
+    def merge_helper(self):
+        self.tOffSet = self.tOffSet + self.num_columns + NUM_METADATA_COLUMNS
+        for x in range(self.num_columns + NUM_METADATA_COLUMNS):
+            tail_address = Address(self.prid, 1, x + self.tOffSet)
+            self.diskManager.new_page(self.table_name, tail_address, x)
 
     def getOffset(self, schema, col_num):
         if (col_num < 1):
