@@ -3,10 +3,8 @@ import math
 from lstore.config import *
 
 """
-# optional: Indexes the specified column of the specified table to speed up select queries
-# This data structure is usually a B-Tree
+# Indexes the specified column of the specified table to speed up select queries
 """
-
 class Index:
 
     def __init__(self, table):
@@ -19,8 +17,8 @@ class Index:
             self.indexDict.append({})  # each dictionary maps {key value : list of RID's}
 
     """
-    # returns the location of all records with the given value
-    # i.e. an RID of base page
+    Returns the location of all records with the given value
+    (i.e. an RIDs of base page)
     :param value: user-given key
     :return: list of RID's
     """
@@ -41,6 +39,9 @@ class Index:
     def locate_range(self, begin, end, column):
         pass
 
+    """
+    Updates index given rid, original record and a new input record
+    """
     def update(self, rid, original, *input):
         for i in range(0, len(input)):
             if input[i]:
@@ -55,10 +56,9 @@ class Index:
                         self.indexDict[i][input[i]] = [rid]
 
     """
-    # optional: Create index on specific column
+    Creates index on specific column
     :param column_number: int
     """
-
     def create_index(self, column_number):
         if self.hasIndex[column_number]:
             return
@@ -86,7 +86,7 @@ class Index:
                         self.indexDict[column_number][key] = [rid]
 
     """
-    deletes record from index
+    Deletes record from index
     """
     def delete(self, key, RID, column_number):
         if self.indexDict[column_number].get(key):
@@ -99,28 +99,28 @@ class Index:
         return 0
 
     """
-    # optional: Drop index of specific column
+    Drops index of specific column
     """
-
     def drop_index(self, column_number):
         self.indexDict[column_number].clear()
 
+        
 class PageDirectory:
+    
     def __init__(self):
         self.indexDict = {}
+        
     """
-    # add key-value pair mapping RID to page + offset
+    Adds key-value pair mapping RID to page + offset
     :param value: {RID : [(base/tail, page_num), record_offset]}
     """
-
     def write(self, RID, value):
         self.indexDict[RID] = value
 
     """
-    # find page + offset of given RID
+    Finds page + offset of given RID
     :return: {RID : [(base/tail, page_num), record_offset]}
     """
-
     def read(self, RID):
         if self.indexDict.get(RID):
             return self.indexDict[RID]
@@ -128,7 +128,7 @@ class PageDirectory:
         return 0
 
     """
-    deletes record from index
+    Deletes record from index
     """
     def delete(self, RID, column_number=0):
         if self.indexDict.get(RID):
@@ -137,23 +137,32 @@ class PageDirectory:
         return 0
 
 class Address:
-    #Base/Tail flag, Page-range number, Page number, Row number
+    
+    #Page-range number, Base/Tail flag, Page number, Row number
     def __init__(self, pagerange, flag, pagenumber, row = None):
         self.pagerange = pagerange
         self.flag = flag  # values: 0--base, 1--tail, 2--base page copy used for merge
         self.pagenumber = pagenumber
         self.page = (flag, pagenumber)
         self.row = row
-
+    """
+    Overloaded add
+    """
     def __add__(self, offset):
         #ret = (self.page[0],self.page[1]+offset)
         #return ret
         new_page_num = self.page[1] + offset
         return Address(self.pagerange, self.flag, new_page_num, self.row)
 
+    """
+    Returns a copy of self
+    """
     def copy(self):
         return Address(self.pagerange, self.flag, self.pagenumber, self.row)
 
+    """
+    Changes flag to (param)flag
+    """
     def change_flag(self, flag):
         self.flag = flag
         self.page = (flag, self.pagenumber)
