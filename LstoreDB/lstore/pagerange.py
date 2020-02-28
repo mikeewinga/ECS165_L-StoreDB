@@ -18,6 +18,7 @@ class PageRange:
         self.num_columns = num_columns
         self.total_base_phys_pages = num_columns + NUM_METADATA_COLUMNS
         self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
+        self.merge_f = 0
         self.bOffSet = bOffset
         self.tOffSet = tOffset
         self.index = PageDirectory()
@@ -62,11 +63,18 @@ class PageRange:
             self.diskManager.append_write(self.table_name, address + (x+NUM_METADATA_COLUMNS), record.columns[x])
         # expand new base pages if needed
         if not self.diskManager.page_has_capacity(self.table_name, address):
+            if rid == self.cap-1:
+                self.merge_f = 1
             self.bOffSet = self.bOffSet + self.num_columns + NUM_METADATA_COLUMNS
             for x in range(self.num_columns + NUM_METADATA_COLUMNS):
                 base_address = Address(self.prid, 0, x + self.bOffSet)
                 self.diskManager.new_page(self.table_name, base_address, x)
 
+    def merge_helper(self):
+        self.tOffSet = self.tOffSet + self.num_columns + NUM_METADATA_COLUMNS
+        for x in range(self.num_columns + NUM_METADATA_COLUMNS):
+            tail_address = Address(self.prid, 1, x + self.tOffSet)
+            self.diskManager.new_page(self.table_name, tail_address, x)
 
     def getOffset(self, schema, col_num):
         if (col_num < 1):
@@ -135,6 +143,7 @@ class PageRange:
         # set the timestamp and schema encoding
         self.diskManager.append_write(self.table_name, address+TIMESTAMP_COLUMN, time)
         self.diskManager.append_write(self.table_name, address+SCHEMA_ENCODING_COLUMN, tail_schema)
+        self.diskManager.append_write(self.table_name, address+BASE_RID_COLUMN, base_rid)
         # copy in record data
         for x in range(self.num_columns):
             self.diskManager.append_write(self.table_name, address+(x+NUM_METADATA_COLUMNS), record.columns[x])

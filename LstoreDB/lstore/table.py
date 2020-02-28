@@ -35,13 +35,15 @@ class Table:
     :param num_columns: int     #Number of Columns: all columns are integer
     :param key: int             #Index of table key in columns
     """
-    def __init__(self, name, diskManager, key = None, num_columns = None):
+
+    def __init__(self, name, diskManager, control, key = None, num_columns = None):
         self.name = name
         self.key = key
         self.num_columns = num_columns
         self.pageranges = {}
         self.index = PageDirectory()
         self.diskManager = diskManager
+        self.control = control
         if (key != None and num_columns != None): # create table from scratch
             self.current_Rid_base = 1
             self.current_Rid_tail = 2 ** 64 - 1
@@ -93,6 +95,7 @@ class Table:
     # update rid -> page range id index
     """
     def insert(self, record):
+        self.control.acquire()
         #handles page range indexing and allocating page ranges
         prid = (self.current_Rid_base-1)//RANGESIZE
         # IF page range id is higher than current max prid -> make new page range
@@ -104,6 +107,7 @@ class Table:
         # update rid->page range id index
         self.index.write(self.current_Rid_base, prid)
         self.current_Rid_base = self.current_Rid_base + 1
+        self.control.release()
 
     """
     Converts the schema bit string to schema bit array
@@ -125,19 +129,25 @@ class Table:
         return offset
 
     def return_record(self, rid, col_wanted):
+        self.control.acquire()
         record_wanted = []
         prid = self.index.read(rid)
+        self.control.release()
         return self.pageranges[prid].return_record(rid, col_wanted)
 
     def update(self, base_rid, tail_schema, record):
+        self.control.acquire()
         prid = self.index.read(base_rid)
         self.pageranges[prid].update(base_rid, tail_schema, record, self.current_Rid_tail, self.get_timestamp())
         self.current_Rid_tail = self.current_Rid_tail - 1
+        self.control.release()
 
     def delete(self, base_rid):
+        self.control.acquire()
         prid = self.index.read(base_rid)
         self.index.delete(base_rid)
         self.pageranges[prid].delete(base_rid)
+        self.control.release()
 
     def close(self):
         overall_page_directory = {}
