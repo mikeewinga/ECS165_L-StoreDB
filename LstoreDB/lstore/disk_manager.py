@@ -1,14 +1,11 @@
+from lstore.page import Page
+from lstore.index import Address
+from lstore.pagerange import PageRange
+from lstore.config import *
 from collections import OrderedDict
 import os
 
-from lstore.config import *
 #from lstore.index import Address
-from lstore.page import Page
-
-BIN_EXTENSION = ".bin"
-INDEX_EXTENSION = "_index.txt"
-PAGE_DIR_EXTENSION = "_pageDir.txt"
-COLUMN_BLOCK_BYTES = PAGESIZE * COLUMN_BLOCK_PAGES
 
 class Bufferpool:
     def __init__(self):
@@ -134,7 +131,10 @@ class DiskManager:
         try:
             os.makedirs(directory_path)
         except OSError:
-            print("Creation of the directory %s failed" % directory_path)
+            if(os.path.exists(directory_path)):
+                return
+            else:
+                print("Creation of the directory %s failed" % directory_path)
         else:
             print("Successfully created the directory %s " % directory_path)
 
@@ -174,7 +174,7 @@ class DiskManager:
     def new_page(self, table_name, address, column_index):
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
         orig_filesize = os.path.getsize(filename)
-        total_columns = self.active_table_metadata[table_name][COLUMNS] + NUM_METADATA_COLUMNS
+        total_columns = int(self.active_table_metadata[table_name][COLUMNS]) + NUM_METADATA_COLUMNS
         column_set_size = COLUMN_BLOCK_BYTES * total_columns
         file_offset = orig_filesize - column_set_size + (COLUMN_BLOCK_BYTES * column_index)
 
@@ -238,7 +238,8 @@ class DiskManager:
         self.bufferpool.unpin_page(table_name, address)
         return merge_page_address
 
-    """def merge_copy_page(self, table_name, address, column_index):
+    """
+    def merge_copy_page(self, table_name, address, column_index):
         if (not self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
         self.bufferpool.pin_page(table_name, address)
@@ -259,7 +260,8 @@ class DiskManager:
         merge_page_address = address.copy()
         merge_page_address.change_flag(2)
         self.bufferpool.unpin_page(table_name, address)
-        return merge_page_address"""
+        return merge_page_address
+    """
 
     """
     param address: the original base page (flag = 0)
@@ -343,12 +345,23 @@ class DiskManager:
             metadata_line = next(file)
             # FIXME do something with the cur_rid_base, etc to recreate Table
             (primary_key, num_user_columns, current_rid_base, current_rid_tail, current_prid) = metadata_line.split()
-            self.active_table_metadata[table_name] = (primary_key, num_user_columns)
+            self.active_table_metadata[table_name] = (int(primary_key), int(num_user_columns), int(current_rid_base), int(current_rid_tail), int(current_prid))
             # split each line in file and save as key-value pairs in dictionary index
             for line in file:
                 (page_range_num, base_tail, page_num, file_offset, num_records) = line.split()
                 address_tuple = (int(page_range_num), (int(base_tail), int(page_num)))
                 self.active_table_indexes[table_name][address_tuple] = [int(file_offset), int(num_records)]
+
+    def load_pagedir_from_disk(self, table_name, table_class, pagerange_class):
+        dir_file = self.directory_path + table_name + PAGE_DIR_EXTENSION
+        with open(dir_file, "r") as file:
+            for line in file:
+                rid, pagerange, flag, pagenumber, row = map(int, line.split())
+                table_class.index.write(rid, pagerange)
+                if(len(pagerange_class) <= pagerange ):
+                    pagerange_class[pagerange] = PageRange(table_class.name, pagerange, table_class.current_Rid_base, table_class.num_columns, table_class.diskManager)
+                pagerange_class[pagerange].index.write(rid, Address(pagerange, flag, pagenumber, row))
+
 
     """
     :param evict_page: key-value pair { (string table_name, int page_range, (int base/tail, int page_num)) : Page() }

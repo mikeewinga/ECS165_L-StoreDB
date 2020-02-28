@@ -1,8 +1,8 @@
-from lstore.page import *
+from lstore.page import Page
 from time import time
-from lstore.index import Index
+from lstore.index import Index, PageDirectory
 from lstore.config import *
-from lstore.pagerange import *
+from lstore.pagerange import PageRange
 import datetime
 import copy
 
@@ -35,15 +35,15 @@ class Table:
     :param num_columns: int     #Number of Columns: all columns are integer
     :param key: int             #Index of table key in columns
     """
-    def __init__(self, name, key, num_columns, diskManager):
+    def __init__(self, name, key, num_columns, diskManager, current_RID_base = 1, current_RID_tail = 2**64 - 1, prid = 0, ):
         self.name = name
         self.key = key
         self.num_columns = num_columns
         self.total_base_phys_pages = num_columns + NUM_METADATA_COLUMNS
         self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
-        self.current_Rid_base = 1
-        self.current_Rid_tail = 2**64 - 1
-        self.current_Prid = 0
+        self.current_Rid_base = current_RID_base
+        self.current_Rid_tail = current_RID_tail
+        self.current_Prid = prid
         self.pageranges = {}
         self.pageranges[0] = PageRange(self.name, 0, self.current_Rid_base, num_columns, diskManager)
         self.index = PageDirectory()
@@ -77,7 +77,6 @@ class Table:
         # update rid->page range id index
         self.index.write(self.current_Rid_base, prid)
         self.current_Rid_base = self.current_Rid_base + 1
-
 
     """
     Converts the schema bit string to schema bit array
