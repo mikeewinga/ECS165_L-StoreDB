@@ -1,7 +1,11 @@
 from lstore.config import *
 
 class Page:
-
+    
+    """
+    Creates a page of size bytes and with number of records num_records.
+    If bytes is None, creates a new page of size PAGESIZE with new tps
+    """
     def __init__(self, bytes = None, num_records = 0):
         self.num_records = num_records
         self.dirty = False
@@ -12,26 +16,36 @@ class Page:
             self.data = bytearray(PAGESIZE)
             self.write(2**64 - 1)  # fill up first record slot with TPS number if the Page() is created from scratch
 
+    """
+    Returns a copy of the page
+    """
     def copy(self):
         copy_page = Page(self.data, self.num_records)
         copy_page.dirty = self.dirty
         copy_page.pin_count = self.pin_count
         return copy_page
 
+    """
+    Pins the page
+    """
     def pin(self):
         self.pin_count += 1
 
+    """
+    Unpins the page
+    """
     def unpin(self):
         self.pin_count -= 1
 
     """
     Checks if there is space left in page
+    Returns True or False
     """
     def has_capacity(self):
         return self.num_records < PAGESIZE/DATASIZE
 
     """
-    Converts a value that may be string, int, etc. to bytes
+    Converts a value that may be string, int, etc. to bytes (size 8)
     """
     def convert_to_bytes(self, value):
         if (isinstance(value, str)):
@@ -59,7 +73,7 @@ class Page:
         return False
 
     """
-    Replaces current value at record_index with new value given
+    Replaces current value at record_index with new given value 
     """
     def overwrite_record(self, record_index, value):
         if (record_index < PAGESIZE/DATASIZE):
