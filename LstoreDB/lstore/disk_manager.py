@@ -171,7 +171,7 @@ class DiskManager:
         self.load_index_from_disk(table_name)
         table_metadata = self.active_table_metadata[table_name]
         table.set_table_metadata(table_metadata[PRIMARY_KEY], table_metadata[COLUMNS], table_metadata[BASE_RID], table_metadata[TAIL_RID], table_metadata[PRID])
-        # FIXME self.load_pagedir_from_disk()
+        self.load_pagedir_from_disk(table_name, table)
         return self.active_table_metadata[table_name]  # FIXME
 
     def new_page(self, table_name, address, column_index):
@@ -336,23 +336,26 @@ class DiskManager:
                 address_tuple = (page_range_num, (base_tail, page_num))
                 self.active_table_indexes[table_name][address_tuple] = [file_offset, num_records]
 
-    # def load_pagedir_from_disk(self, table_name, table):
-    #     table.
-    #     #FIXME
-    #     table_metadata = self.active_table_metadata[table_name]
+    def load_pagedir_from_disk(self, table_name, table):
+        table_metadata = self.active_table_metadata[table_name]
+        num_page_ranges = table_metadata[PRID] + 1
+        prange_metadata = table_metadata[PRANGE_METADATA]
+        for prid in range(num_page_ranges):
+            table.add_page_range(prid, prange_metadata[prid][BOFFSET], prange_metadata[prid][TOFFSET])
+        #FIXME do more here
 
-    def load_pagedir_from_disk(self, table_name, table_class, pagerange_class, pagerange_metadata):
-        dir_file = self.directory_path + table_name + PAGE_DIR_EXTENSION
-        pagerange_class[0].bOffSet = pagerange_metadata[0][BOFFSET]
-        pagerange_class[0].tOffSet = pagerange_metadata[0][TOFFSET]
-        with open(dir_file, "r") as file:
-            for line in file:
-                rid, pagerange, flag, pagenumber, row = map(int, line.split())
-                table_class.index.write(rid, pagerange)
-                # if there is more than one page range, allocate more pageranges
-                if(len(pagerange_class) <= pagerange ):
-                    pagerange_class[pagerange] = PageRange(table_class.name, pagerange, table_class.current_Rid_base, table_class.num_columns, table_class.diskManager, pagerange_metadata[pagerange][BOFFSET], pagerange_metadata[pagerange][TOFFSET])
-                pagerange_class[pagerange].index.write(rid, Address(pagerange, flag, pagenumber, row))
+    # def load_pagedir_from_disk(self, table_name, table_class, pagerange_class, pagerange_metadata):
+    #     dir_file = self.directory_path + table_name + PAGE_DIR_EXTENSION
+    #     pagerange_class[0].bOffSet = pagerange_metadata[0][BOFFSET]
+    #     pagerange_class[0].tOffSet = pagerange_metadata[0][TOFFSET]
+    #     with open(dir_file, "r") as file:
+    #         for line in file:
+    #             rid, pagerange, flag, pagenumber, row = map(int, line.split())
+    #             table_class.index.write(rid, pagerange)
+    #             # if there is more than one page range, allocate more pageranges
+    #             if(len(pagerange_class) <= pagerange ):
+    #                 pagerange_class[pagerange] = PageRange(table_class.name, pagerange, table_class.current_Rid_base, table_class.num_columns, table_class.diskManager, pagerange_metadata[pagerange][BOFFSET], pagerange_metadata[pagerange][TOFFSET])
+    #             pagerange_class[pagerange].index.write(rid, Address(pagerange, flag, pagenumber, row))
 
 
     """

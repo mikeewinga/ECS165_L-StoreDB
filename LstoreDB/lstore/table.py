@@ -66,18 +66,16 @@ class Table:
         self.total_base_phys_pages = self.num_columns + NUM_METADATA_COLUMNS
         self.total_tail_phys_pages = self.num_columns + NUM_METADATA_COLUMNS
 
-    """
-    :param metadata: tuple (int bOffset, int tOffset)
-    """
-    # def add_page_range(self, prid, metadata):
-    #     # FIXME
-    #     self.pageranges[0] = PageRange(self.name, 0, self.current_Rid_base, num_columns, diskManager)
-    #
-    # def add_pagedir_entry(self, rid, prid):
-    #     self.index.write(rid, prid)
-    #
-    # def get_page_range(self, prid):
-    #     return self.pageranges[prid]
+    def add_page_range(self, prid, bOffset, tOffset):
+        #FIXME
+        is_new_range = False
+        self.pageranges[prid] = PageRange(self.name, prid, self.num_columns, self.diskManager, is_new_range, bOffset, tOffset)
+
+    def add_pagedir_entry(self, rid, prid):
+        self.index.write(rid, prid)
+
+    def get_page_range(self, prid):
+        return self.pageranges[prid]
 
     def get_timestamp(self):
         stamp = datetime.datetime.now()

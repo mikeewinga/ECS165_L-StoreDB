@@ -10,13 +10,11 @@ with the currently saved index
 """
 class PageRange:
 
-    def __init__(self, table_name, prid, start, num_columns, diskManager, bOffset = 0, tOffset = 0):
+    def __init__(self, table_name, prid, num_columns, diskManager, is_new_range, bOffset = 0, tOffset = 0):
         self.table_name = table_name
         self.prid = prid
-        self.tps = 2**64 - 1
+        self.tps = 2 ** 64 - 1
         self.cur_tid = self.tps
-        self.base = start
-        self.cap = start + RANGESIZE
         self.num_columns = num_columns
         self.total_base_phys_pages = num_columns + NUM_METADATA_COLUMNS
         self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
@@ -24,15 +22,25 @@ class PageRange:
         self.tOffSet = tOffset
         self.index = PageDirectory()
         self.diskManager = diskManager
-        for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
-            #self.pages[(0,x)] = Page()
-            #self.pages[(1,x)] = Page()
-            base_address = Address(self.prid, 0, x)
-            self.diskManager.new_page(self.table_name, base_address, x)
-            tail_address = Address(self.prid, 1, x)
-            self.diskManager.new_page(self.table_name, tail_address, x)
+        self.base = prid * RANGESIZE
+        self.cap = self.base + RANGESIZE
 
+        if (is_new_range):
+            # initialize first set of base and tail pages
+            for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
+                # self.pages[(0,x)] = Page()
+                # self.pages[(1,x)] = Page()
+                base_address = Address(self.prid, 0, x)
+                self.diskManager.new_page(self.table_name, base_address, x)
+                tail_address = Address(self.prid, 1, x)
+                self.diskManager.new_page(self.table_name, tail_address, x)
 
+    def add_pagedir_entry(self, rid, address):
+        self.index.write(rid, address)
+
+    def set_metadata(self, bOffset, tOffset):
+        self.bOffSet = bOffset
+        self.tOffSet = tOffset
 
     #pass in rid from table
     def insert(self, record, rid, time):
