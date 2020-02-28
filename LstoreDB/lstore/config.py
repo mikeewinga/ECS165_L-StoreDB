@@ -20,6 +20,11 @@ COLUMNS = 1
 BASE_RID = 2
 TAIL_RID = 3
 PRID = 4
+# PRANGE_METADATA is a tuple that contains BOFFSET and TOFFSET
+PRANGE_METADATA = 5
+BOFFSET = 0
+TOFFSET = 1
+
 
 # tuple indexing for table page metadata (file_offset, num_records)
 FILE_OFFSET = 0

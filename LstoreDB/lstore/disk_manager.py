@@ -344,22 +344,31 @@ class DiskManager:
             # read primary key index and num columns metadata
             metadata_line = next(file)
             # FIXME do something with the cur_rid_base, etc to recreate Table
-            (primary_key, num_user_columns, current_rid_base, current_rid_tail, current_prid) = metadata_line.split()
-            self.active_table_metadata[table_name] = (int(primary_key), int(num_user_columns), int(current_rid_base), int(current_rid_tail), int(current_prid))
+            pRange_metadata = []
+            (primary_key, num_user_columns, current_rid_base, current_rid_tail, current_prid) = map(int, metadata_line.split())
+            for i in range(current_prid+1):
+                pRange_metadata.append(())
+                pagerange_data = next(file)
+                pagerange_number, bOffset, tOffset = map(int, pagerange_data.split())
+                pRange_metadata[pagerange_number] = (bOffset, tOffset) 
+            self.active_table_metadata[table_name] = (primary_key, num_user_columns, current_rid_base, current_rid_tail, current_prid, pRange_metadata)
             # split each line in file and save as key-value pairs in dictionary index
             for line in file:
-                (page_range_num, base_tail, page_num, file_offset, num_records) = line.split()
-                address_tuple = (int(page_range_num), (int(base_tail), int(page_num)))
-                self.active_table_indexes[table_name][address_tuple] = [int(file_offset), int(num_records)]
+                page_range_num, base_tail, page_num, file_offset, num_records = map(int, line.split())
+                address_tuple = (page_range_num, (base_tail, page_num))
+                self.active_table_indexes[table_name][address_tuple] = [file_offset, num_records]
 
-    def load_pagedir_from_disk(self, table_name, table_class, pagerange_class):
+    def load_pagedir_from_disk(self, table_name, table_class, pagerange_class, pagerange_metadata):
         dir_file = self.directory_path + table_name + PAGE_DIR_EXTENSION
+        pagerange_class[0].bOffSet = pagerange_metadata[0][BOFFSET]
+        pagerange_class[0].tOffSet = pagerange_metadata[0][TOFFSET]
         with open(dir_file, "r") as file:
             for line in file:
                 rid, pagerange, flag, pagenumber, row = map(int, line.split())
                 table_class.index.write(rid, pagerange)
+                # if there is more than one page range, allocate more pageranges
                 if(len(pagerange_class) <= pagerange ):
-                    pagerange_class[pagerange] = PageRange(table_class.name, pagerange, table_class.current_Rid_base, table_class.num_columns, table_class.diskManager)
+                    pagerange_class[pagerange] = PageRange(table_class.name, pagerange, table_class.current_Rid_base, table_class.num_columns, table_class.diskManager, pagerange_metadata[pagerange][BOFFSET], pagerange_metadata[pagerange][TOFFSET])
                 pagerange_class[pagerange].index.write(rid, Address(pagerange, flag, pagenumber, row))
 
 

@@ -9,6 +9,7 @@ db.open('~/ECS165')
 grades_table = db.get_table('Grades')
 query = Query(grades_table)
 
+
 # repopulate with random data
 records = {}
 seed(3562901)
@@ -23,7 +24,6 @@ for _ in range(10):
             records[key][j] = value
 keys = sorted(list(records.keys()))
 for key in keys:
-    print(records[key])
     print(records[key])
 
 for key in keys:

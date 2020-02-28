@@ -10,7 +10,7 @@ with the currently saved index
 """
 class PageRange:
 
-    def __init__(self, table_name, prid, start, num_columns, diskManager):
+    def __init__(self, table_name, prid, start, num_columns, diskManager, bOffset = 0, tOffset = 0):
         self.table_name = table_name
         self.prid = prid
         self.tps = 2**64 - 1
@@ -20,8 +20,8 @@ class PageRange:
         self.num_columns = num_columns
         self.total_base_phys_pages = num_columns + NUM_METADATA_COLUMNS
         self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
-        self.bOffSet = 0
-        self.tOffSet = 0
+        self.bOffSet = bOffset
+        self.tOffSet = tOffset
         self.index = PageDirectory()
         self.diskManager = diskManager
         for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
