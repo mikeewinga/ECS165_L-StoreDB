@@ -44,8 +44,8 @@ for _ in range(3):
             for j, column in enumerate(record.columns):
                 if column != records[key][j]:
                     error = True
-            if error:
-                print('update error on', original, 'and', updated_columns, ':', record, ', correct:', records[key])
+            #if error:
+            #    print('update error on', original, 'and', updated_columns, ':', record, ', correct:', records[key])
             # else:
             #     print('update on', original, 'and', updated_columns, ':', record)
             updated_columns[i] = None

@@ -62,7 +62,7 @@ class Page:
     Replaces current value at record_index with new value given
     """
     def overwrite_record(self, record_index, value):
-        if (record_index < PAGESIZE/DATASIZE):
+        if (record_index < PAGESIZE//DATASIZE):
             insert = self.convert_to_bytes(value)
             # Find byte position corresponding to record and overwrite the data
             pos = record_index * DATASIZE
@@ -76,7 +76,7 @@ class Page:
     :return: bytearray of 8 bytes
     """
     def read(self, index):
-        if (index < PAGESIZE/DATASIZE):
+        if (index < PAGESIZE//DATASIZE):
             # Find byte position corresponding to record and read the data
             pos = index * DATASIZE
             value = self.data[pos:pos+(DATASIZE)]

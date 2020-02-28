@@ -32,7 +32,10 @@ def merge(table, page_Range):
     b_pages = {}
     p_ind = 0
     step = NUM_METADATA_COLUMNS + page_Range.num_columns
-    while p_ind <= page_Range.bOffSet:
+    tid = page_Range.cur_tid
+    mindex = copy.deepcopy(page_Range.index)
+    
+    while p_ind < page_Range.bOffSet:
         for i in range(0, page_Range.num_columns+NUM_METADATA_COLUMNS):
             b_pages[(0,i+p_ind)] = diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind), i)
         """
@@ -41,38 +44,29 @@ def merge(table, page_Range):
             b_pages[(0,i+p_ind+NUM_METADATA_COLUMNS)] = diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind), i+NUM_METADATA_COLUMNS)
         """
         p_ind = p_ind + step
-    #print(rad.pagerange, rad.flag, rad.pagenumber, rad.page, rad.row)
-    #data = diskManager.read(table,rad+5)
-    ##print(int.from_bytes(data, byteorder = "big"))
-    tid = page_Range.cur_tid
-    index = copy.deepcopy(page_Range.index)
-    """
-    mergeRange = copy.deepcopy(page_Range)
-    #give page range new tail record
-    #function to change tail record index
-    """
+
     #control.release()
-    address = index.read(1+(page_Range.prid*RANGESIZE))
-    for x in range(0, page_Range.num_columns):
-        value = diskManager.read(table, address+(NUM_METADATA_COLUMNS+x))
+    address = mindex.read(2+(page_Range.prid*RANGESIZE))
+    for x in range(0, page_Range.num_columns+NUM_METADATA_COLUMNS):
+        value = diskManager.read(table, address+x)
         value = int.from_bytes(value, byteorder = "big")
         print(value)
-    address = index.read(tid)
+    address = mindex.read(tid)
     t_page = address.pagenumber
     t_row = address.row
-
+    bpr = diskManager.read(table, Address(page_Range.prid, 2, 1, 2))
+    print("asdf",bpr)
+    #print(t_page, t_row, page_Range.tOffSet, tid)
+    #diskManager.debug_print_page(table, b_pages[(0, 1)])
     #look at last tail page, potentially not full
     for cur_page in range(t_page, -1, -step):
         for recNum in range (t_row, 0, -1):
             address = Address(page_Range.prid, 1, cur_page, recNum)
-            #rad = address
-            #print(rad.pagerange, rad.flag, rad.pagenumber, rad.page, rad.row)
             base_rid = diskManager.read(table, address+4)
             base_rid = int.from_bytes(base_rid, byteorder = "big")
-            #print(base_rid)
-            baddress = index.read(base_rid)
-            
-            tSchema = diskManager.read(table,address+SCHEMA_ENCODING_COLUMN)
+            baddress = mindex.read(base_rid).copy()
+            b = baddress
+            tSchema = diskManager.read(table, address+SCHEMA_ENCODING_COLUMN)
             bSchema = diskManager.read(table, baddress+SCHEMA_ENCODING_COLUMN)
             tSchema = int.from_bytes(tSchema, byteorder = "big")
             bSchema = int.from_bytes(bSchema, byteorder = "big")
@@ -80,42 +74,37 @@ def merge(table, page_Range):
             schemaToUpdate = bSchema & tSchema #bitwise AND
 
             resultingBaseSchema = bSchema & (~tSchema)  #bitwise AND_NOT
-            #print(bSchema, tSchema, schemaToUpdate, resultingBaseSchema)
-
+            taddress = baddress
+            taddress.change_flag(2)
             # split schemaToUpdate into bool array [0,1,0,...]
             schemaToUpdate = getOffset(schemaToUpdate, page_Range.num_columns)
-            if cur_page == 0 and recNum == 1:
-                print(schemaToUpdate)
+            #if cur_page == 0 and recNum == 1:
             for x in range(0, len(schemaToUpdate)):
                 if (schemaToUpdate[x]):
                     value = diskManager.read(table, address+(NUM_METADATA_COLUMNS+x))
                     value = int.from_bytes(value, byteorder = "big")
-                    target = b_pages[(0,x+cur_page+NUM_METADATA_COLUMNS)]
-                    target.row = recNum
+                    target = taddress+(NUM_METADATA_COLUMNS+x)
                     diskManager.overwrite(table, target, value)
 
             #convert new base schema to binary and store back to base record
             #mergeRange.pages[baddress+SCHEMA_ENCODING_COLUMN].overwrite_record(baddress.row, resultingBaseSchema)
         t_row = 511
     p_ind = 0
-    while p_ind <= page_Range.bOffSet:
-        for x in range(0,page_Range.num_columns):
-            address = Address(page_Range.prid, 0, p_ind+x+NUM_METADATA_COLUMNS)
+
+    while p_ind < page_Range.bOffSet:
+        for x in range(0,page_Range.num_columns+NUM_METADATA_COLUMNS):
+            address = Address(page_Range.prid, 0, p_ind+x)
             diskManager.merge_replace_page(table, address)
         p_ind = p_ind + step
-    address = index.read(1+(page_Range.prid*RANGESIZE))
-    rad = address
-    print(rad.pagerange, rad.flag, rad.pagenumber, rad.page, rad.row)
-    for x in range(0, page_Range.num_columns):
-        value = diskManager.read(table, address+(NUM_METADATA_COLUMNS+x))
+    address = mindex.read(2+(page_Range.prid*RANGESIZE))
+    for x in range(0, page_Range.num_columns+NUM_METADATA_COLUMNS):
+        value = diskManager.read(table, address+x)
         value = int.from_bytes(value, byteorder = "big")
         print(value)
     
     #page_Range.pages = mergeRange.pages
     #handle delete queue
     #handle swapping tal records
-    while 1:
-        print("wait")
     #control.release()
 
 global control

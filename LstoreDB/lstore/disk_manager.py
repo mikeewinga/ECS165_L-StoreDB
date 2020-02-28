@@ -4,6 +4,7 @@ import os
 from lstore.config import *
 #from lstore.index import Address
 from lstore.page import Page
+import copy
 
 BIN_EXTENSION = ".bin"
 INDEX_EXTENSION = "_index.txt"
@@ -60,7 +61,8 @@ class Bufferpool:
     """
     def merge_copy_page(self, table_name, address):
         page = self.page_map[(table_name, address.pagerange, address.page)]
-        new_page = page.copy()
+        #new_page = page.copy()
+        new_page = copy.deepcopy(page)
         # change the base/tail flag to 2, so address refers to merge base page
         self.page_map[(table_name, address.pagerange, (2, address.pagenumber))] = new_page
 
@@ -232,10 +234,10 @@ class DiskManager:
         # allocate a new page in file and save the physical file offset in table_index
         file_offset = self.new_page(table_name, maddress, column_index)
         table_index = self.active_table_indexes[table_name]
-        print(maddress.page)
+        #print(maddress.page)
         # change the base/tail flag to 2, so address refers to merge base page
-        table_index[(maddress.pagerange, (2, maddress.pagenumber))] = [file_offset, 1]
-        self.bufferpool.unpin_page(table_name, address)
+        table_index[(maddress.pagerange, maddress.page)] = [file_offset, 1]
+        self.bufferpool.unpin_page(table_name, address+column_index)
         return maddress
 
     """
@@ -254,6 +256,14 @@ class DiskManager:
         table_index[(address.pagerange, address.page)][FILE_OFFSET] = new_file_offset
         # delete merge page address entry from table_index
         del table_index[(merge_address.pagerange, merge_address.page)]
+
+    def debug_print_page(self, table_name, address):
+        if (not self.bufferpool.contains_page(table_name, address)):
+            self.load_page_from_disk(table_name, address)
+        print(address.page)
+        for i in range(1, 512):
+            address.row = i
+            print(int.from_bytes(self.bufferpool.read(table_name, address),byteorder="big"))
 
     def delete_page(self, table_name, base_tail, page_num):
         pass #FIXME set TPS to 1 for the page to mark as deleted
