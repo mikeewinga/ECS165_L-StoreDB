@@ -5,14 +5,15 @@ from lstore.index import Index
 class Query:
     """
     # Creates a Query object that can perform different queries on the specified table
+    
     """
-
     def __init__(self, table):
         self.table = table
         self.index = Index(table)
 
     """
-    Deletes key from database and index
+    Deletes data and key from database and index
+    
     """
     def delete(self, primary_key):
         rid = self.index.locate(self.table.key, primary_key)[0]
@@ -23,22 +24,22 @@ class Query:
         self.table.delete(rid)
 
     """
-    # Insert a record with specified columns
+    Inserts a record with specified columns
     :param columns: variadic parameters of column values in a record
+    
     """
-
     def insert(self, *columns):
-        #package information into records and pass records to table
+        #packages information into records and pass records to table
         record = Record(self.table.current_Rid_base, self.table.key, columns)
         self.table.insert(record)
 
     """
-    # Read columns from a record with specified key
+    Reads columns from a record with specified key
     :param query_columns: list of bit values, 0 for unselected columns and 1
         for selected columns
     :return: list of selected records
+    
     """
-
     def select(self, key, column, query_columns):
         # create index for column if needed
         self.index.create_index(column)
@@ -51,11 +52,11 @@ class Query:
         return record_set
 
     """
-    # Update a record with specified key and columns
+    # Updates a record with specified key and columns
     :param columns: variadic parameters of column values to update. Example:
         [None, None, 4, None] specifies to update 3rd column with new value
+        
     """
-
     def update(self, key, *columns):
         # create index for column if needed
         self.index.create_index(self.table.key)
