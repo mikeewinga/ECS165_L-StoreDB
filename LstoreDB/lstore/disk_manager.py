@@ -10,7 +10,7 @@ from lstore.index import Address
 BIN_EXTENSION = ".bin"
 INDEX_EXTENSION = "_index.txt"
 COLUMN_BLOCK_BYTES = PAGESIZE * COLUMN_BLOCK_PAGES
-
+#needs commenting
 class Bufferpool:
     def __init__(self):
         self.max_pages = BUFFERPOOL_SIZE

@@ -64,6 +64,7 @@ class PageRange:
                 base_address = Address(self.prid, 0, x + self.bOffSet)
                 self.diskManager.new_page(self.table_name, base_address, x)
 
+    #shifts tail records
     def merge_helper(self):
         self.tOffSet = self.tOffSet + self.num_columns + NUM_METADATA_COLUMNS
         for x in range(self.num_columns + NUM_METADATA_COLUMNS):

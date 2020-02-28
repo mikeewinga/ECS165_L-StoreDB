@@ -39,8 +39,6 @@ def merge(table, page_Range):
         for i in range(0, page_Range.num_columns+NUM_METADATA_COLUMNS):
             b_pages[i+p_ind] = diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind), i)
         p_ind = p_ind + step
-        
-    #page_Range.merge_helper()
 
     control.release()
     needs = [1,3]
@@ -52,6 +50,7 @@ def merge(table, page_Range):
 
     #diskManager.debug_print_page(table, b_pages[(0, 1)])
     #look at last tail page, potentially not full
+    #comment
     for cur_page in range(t_page, -1, -step):
         for recNum in range (t_row, 0, -1):
             address = Address(page_Range.prid, 1, cur_page, recNum)

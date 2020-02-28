@@ -27,7 +27,7 @@ class Directory:
     def __init__(self):
         self.indexer = {}
 
-
+#holds page ranges
 class Table:
 
     """

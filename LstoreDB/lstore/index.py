@@ -103,7 +103,7 @@ class Index:
 
     def drop_index(self, column_number):
         pass
-
+#handled outside
 class PageDirectory:
     def __init__(self):
         self.indexDict = {}

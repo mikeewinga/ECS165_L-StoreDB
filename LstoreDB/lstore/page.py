@@ -11,7 +11,7 @@ class Page:
         else:
             self.data = bytearray(PAGESIZE)
             self.write(2**64 - 1)  # fill up first record slot with TPS number if the Page() is created from scratch
-
+    #copy to not have reference issues
     def copy(self):
         copy_page = Page(self.data, self.num_records)
         copy_page.dirty = self.dirty
