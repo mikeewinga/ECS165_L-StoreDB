@@ -80,6 +80,7 @@ class Database():
         self.diskManager.open_table_file(name, table)
         #table.diskManager.load_pagedir_from_disk(name, table, table.pageranges, table_metadata[PRANGE_METADATA])
         tables.append(table)
-            #return table
+
+        # FIXME return table
         #else:
             #return None

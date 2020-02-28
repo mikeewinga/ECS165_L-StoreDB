@@ -42,14 +42,14 @@ class Table:
         self.pageranges = {}
         self.index = PageDirectory()
         self.diskManager = diskManager
-        if (key and num_columns): # create table from scratch
+        if (key != None and num_columns != None): # create table from scratch
             self.current_Rid_base = 1
             self.current_Rid_tail = 2 ** 64 - 1
             self.current_Prid = 0
             self.total_base_phys_pages = num_columns + NUM_METADATA_COLUMNS
             self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
             # create the first empty page range
-            self.pageranges[0] = PageRange(self.name, 0, self.current_Rid_base, num_columns, diskManager)
+            self.pageranges[0] = PageRange(self.name, 0, self.num_columns, diskManager, True)
         else:  # table will have to be initialized manually
             self.current_Rid_base = None
             self.current_Rid_tail = None
