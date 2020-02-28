@@ -13,7 +13,7 @@ query = Query(grades_table)
 # repopulate with random data
 records = {}
 seed(3562901)
-for i in range(0, 1000):
+for i in range(0, 2000):
     key = 92106429 + i
     records[key] = [key, randint(0, 20), randint(0, 20), randint(0, 20), randint(0, 20)]
 keys = sorted(list(records.keys()))
@@ -35,11 +35,12 @@ for key in keys:
     if error:
         print('select error on', key, ':', record, ', correct:', records[key])
 print("Select finished")
-"""
+
 deleted_keys = sample(keys, 100)
 for key in deleted_keys:
     query.delete(key)
     records.pop(key, None)
+print("delete finished")
 
 for i in range(0, 100):
     r = sorted(sample(range(0, len(keys)), 2))
@@ -48,5 +49,5 @@ for i in range(0, 100):
     if column_sum != result:
         print('sum error on [', keys[r[0]], ',', keys[r[1]], ']: ', result, ', correct: ', column_sum)
 print("Aggregate finished")
-"""
+
 db.close()

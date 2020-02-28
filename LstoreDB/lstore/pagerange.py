@@ -24,6 +24,7 @@ class PageRange:
         self.diskManager = diskManager
         self.base = prid * RANGESIZE
         self.cap = self.base + RANGESIZE
+        self.delete_queue = []
 
         if (is_new_range):
             # initialize first set of base and tail pages
