@@ -136,7 +136,10 @@ class Database():
         pass
 
     def close(self):
+        for tbl in tables:
+            tbl.close()
         self.diskManager.close()
+        print("database closed\n")
         pass
 
     """
@@ -147,7 +150,7 @@ class Database():
     """
     def create_table(self, name, num_columns, key):
         if (self.diskManager.new_table_file(name, key, num_columns)):  # check if new table file was successfully created
-            table = Table(name, key, num_columns, self.diskManager, self.control)
+            table = Table(name, self.diskManager, self.control, key, num_columns)
             tables.append(table)
             return table
         else:
@@ -169,9 +172,13 @@ class Database():
     # Retruns table with the passed name
     """
     def get_table(self, name):
-        table_metadata = self.diskManager.open_table_file(name)
-        if (len(table_metadata) != 0):  # the table file and metadata exist
-            table = Table(name, table_metadata[PRIMARY_KEY], table_metadata[COLUMNS], self.diskManager)
-            return table
-        else:
-            return None
+        #table_metadata = self.diskManager.open_table_file(name)
+        #if (len(table_metadata) != 0):  # the table file and metadata exist
+        table = Table(name, self.diskManager)
+        self.diskManager.open_table_file(name, table)
+        #table.diskManager.load_pagedir_from_disk(name, table, table.pageranges, table_metadata[PRANGE_METADATA])
+        tables.append(table)
+
+        # FIXME return table
+        #else:
+            #return None

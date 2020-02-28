@@ -1,15 +1,11 @@
+from lstore.page import Page
+from lstore.index import Address
+from lstore.pagerange import PageRange
+from lstore.table import *
+from lstore.config import *
 from collections import OrderedDict
 import os
 
-from lstore.config import *
-#from lstore.index import Address
-from lstore.page import Page
-import copy
-from lstore.index import Address
-
-BIN_EXTENSION = ".bin"
-INDEX_EXTENSION = "_index.txt"
-COLUMN_BLOCK_BYTES = PAGESIZE * COLUMN_BLOCK_PAGES
 
 class Bufferpool:
     def __init__(self):
@@ -128,14 +124,17 @@ class DiskManager:
         self.bufferpool = Bufferpool()
         self.directory_path = ""
         self.active_table_indexes = {}  # { string table_name : {address tuple (int page_range, (int base/tail, int page_num)) : [file_offset_bytes, num_records] }}
-        self.active_table_metadata = {}  # { string table_name: (int primary key index, int num_total_columns) }
+        self.active_table_metadata = {}  # { string table_name: (int primary key index, int num_user_columns, current_rid_base, current_rid_tail, current_prid, {prid : (bOffset, tOffset)} }
 
     def set_directory_path(self, directory_path):
         self.directory_path = directory_path + "/"
         try:
             os.makedirs(directory_path)
         except OSError:
-            print("Creation of the directory %s failed" % directory_path)
+            if(os.path.exists(directory_path)):
+                return
+            else:
+                print("Creation of the directory %s failed" % directory_path)
         else:
             print("Successfully created the directory %s " % directory_path)
 
@@ -152,27 +151,34 @@ class DiskManager:
             filename = self.directory_path + table_name + INDEX_EXTENSION  # index/config file for table
             with open(filename, "x") as file:
                 file.write(str(primary_key) + "\n")  # save primary key column number
-                file.write(str(num_user_columns + NUM_METADATA_COLUMNS) + "\n")  # save total number of columns
+                file.write(str(num_user_columns) + "\n")  # save number of user columns
             # add entries to the metadata dictionaries for the new table
-            self.active_table_metadata[table_name] = (primary_key, num_user_columns + NUM_METADATA_COLUMNS)
+            self.active_table_metadata[table_name] = (primary_key, num_user_columns)
             self.active_table_indexes[table_name] = {}
+            filename = self.directory_path + table_name + PAGE_DIR_EXTENSION  # page directory config file
+            with open(filename, "x") as file: pass
             return True
         except FileExistsError:
             return False
 
-    def open_table_file(self, table_name):
-        if os.path.exists(self.directory_path + table_name + INDEX_EXTENSION)\
-                and os.path.exists(self.directory_path + table_name + BIN_EXTENSION):
-            #load the index into active_table_indexes
-            self.load_index_from_disk(table_name)
-            return self.active_table_metadata[table_name]
-        else:
+    def open_table_file(self, table_name, table):
+        if not (os.path.exists(self.directory_path + table_name + INDEX_EXTENSION)
+                and os.path.exists(self.directory_path + table_name + BIN_EXTENSION)
+                and os.path.exists(self.directory_path + table_name + PAGE_DIR_EXTENSION)):
             return ()
+            # return None
+        # else the files exist
+        # load the index into active_table_indexes
+        self.load_index_from_disk(table_name)
+        table_metadata = self.active_table_metadata[table_name]
+        table.set_table_metadata(table_metadata[PRIMARY_KEY], table_metadata[COLUMNS], table_metadata[BASE_RID], table_metadata[TAIL_RID], table_metadata[PRID])
+        self.load_pagedir_from_disk(table_name, table)
+        return self.active_table_metadata[table_name]  # FIXME
 
     def new_page(self, table_name, address, column_index):
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
         orig_filesize = os.path.getsize(filename)
-        total_columns = self.active_table_metadata[table_name][COLUMNS]
+        total_columns = int(self.active_table_metadata[table_name][COLUMNS]) + NUM_METADATA_COLUMNS
         column_set_size = COLUMN_BLOCK_BYTES * total_columns
         file_offset = orig_filesize - column_set_size + (COLUMN_BLOCK_BYTES * column_index)
 
@@ -327,14 +333,41 @@ class DiskManager:
         self.active_table_indexes[table_name] = {}
         with open(index_filename, "r") as file:
             # read primary key index and num columns metadata
-            primary_key = next(file)
-            num_total_columns = next(file)
-            self.active_table_metadata[table_name] = (primary_key, num_total_columns)
+            metadata_line = next(file)
+            (primary_key, num_user_columns, current_rid_base, current_rid_tail, current_prid) = map(int, metadata_line.split())
+            pRange_metadata = {}
+            for i in range(current_prid+1):  # for all the page ranges
+                pagerange_data = next(file)
+                pagerange_number, bOffset, tOffset = map(int, pagerange_data.split())
+                pRange_metadata[pagerange_number] = (bOffset, tOffset) 
+            self.active_table_metadata[table_name] = (primary_key, num_user_columns, current_rid_base, current_rid_tail, current_prid, pRange_metadata)
             # split each line in file and save as key-value pairs in dictionary index
             for line in file:
-                (page_range_num, base_tail, page_num, file_offset, num_records) = line.split()
-                address_tuple = (int(page_range_num), (int(base_tail), int(page_num)))
-                self.active_table_indexes[table_name][address_tuple] = [int(file_offset), int(num_records)]
+                page_range_num, base_tail, page_num, file_offset, num_records = map(int, line.split())
+                address_tuple = (page_range_num, (base_tail, page_num))
+                self.active_table_indexes[table_name][address_tuple] = [file_offset, num_records]
+
+    def load_pagedir_from_disk(self, table_name, table):
+        table_metadata = self.active_table_metadata[table_name]
+        num_page_ranges = table_metadata[PRID] + 1
+        prange_metadata = table_metadata[PRANGE_METADATA]
+        for prid in range(num_page_ranges):
+            table.add_page_range(prid, prange_metadata[prid][BOFFSET], prange_metadata[prid][TOFFSET])
+        #FIXME do more here
+
+    # def load_pagedir_from_disk(self, table_name, table_class, pagerange_class, pagerange_metadata):
+    #     dir_file = self.directory_path + table_name + PAGE_DIR_EXTENSION
+    #     pagerange_class[0].bOffSet = pagerange_metadata[0][BOFFSET]
+    #     pagerange_class[0].tOffSet = pagerange_metadata[0][TOFFSET]
+    #     with open(dir_file, "r") as file:
+    #         for line in file:
+    #             rid, pagerange, flag, pagenumber, row = map(int, line.split())
+    #             table_class.index.write(rid, pagerange)
+    #             # if there is more than one page range, allocate more pageranges
+    #             if(len(pagerange_class) <= pagerange ):
+    #                 pagerange_class[pagerange] = PageRange(table_class.name, pagerange, table_class.current_Rid_base, table_class.num_columns, table_class.diskManager, pagerange_metadata[pagerange][BOFFSET], pagerange_metadata[pagerange][TOFFSET])
+    #             pagerange_class[pagerange].index.write(rid, Address(pagerange, flag, pagenumber, row))
+
 
     """
     :param evict_page: key-value pair { (string table_name, int page_range, (int base/tail, int page_num)) : Page() }
@@ -352,17 +385,37 @@ class DiskManager:
             file.seek(file_offset)
             file.write(page.data)
 
-    """
-    note that this function doesn't delete the entry from dictionary, just flushes it to disk
-    """
-    def flush_index_metadata(self, table_name):
+    def flush_table_metadata(self, table_name, current_rid_base, current_rid_tail, cur_prid):
         table_metadata = self.active_table_metadata[table_name]
-        table_index = self.active_table_indexes[table_name]
         filename = self.directory_path + table_name + INDEX_EXTENSION # file for table index
         with open(filename, "w") as file:  # open file and wipe the contents, then rewrite everything
             # copy the metadata into file
-            file.write(str(table_metadata[PRIMARY_KEY]) + "\n")
-            file.write(str(table_metadata[COLUMNS]) + "\n")
+            metadata_line = str(table_metadata[PRIMARY_KEY]) + " " \
+                            + str(table_metadata[COLUMNS]) + " " \
+                            + str(current_rid_base) + " " \
+                            + str(current_rid_tail) + " " \
+                            + str(cur_prid) + "\n"
+            file.write(metadata_line)
+
+    """
+    :param metadata_dict: { int prid : (int bOffset, int tOffset) }
+    """
+    def flush_pagerange_metadata(self, table_name, metadata_dict):
+        filename = self.directory_path + table_name + INDEX_EXTENSION # file for table index
+        with open(filename, "a") as file:
+            for prid in metadata_dict:
+                page_range_line = str(prid) + " "\
+                                  + str(metadata_dict[prid][0]) + " "\
+                                  + str(metadata_dict[prid][1]) + "\n"
+                file.write(page_range_line)
+
+    """
+    note that this function doesn't delete the entry from dictionary, just flushes it to disk
+    """
+    def flush_index(self, table_name, current_rid_base, current_rid_tail, cur_prid):
+        table_index = self.active_table_indexes[table_name]
+        filename = self.directory_path + table_name + INDEX_EXTENSION # file for table index
+        with open(filename, "a") as file:  # open file and append
             # copy the index into file
             for address_tuple in table_index:
                 index_line = str(address_tuple[0]) + " "\
@@ -373,6 +426,17 @@ class DiskManager:
                 file.write(index_line)
         # del self.active_table_indexes[table_name]
 
+    def flush_page_directory(self, table_name, pagedir_dict):
+        filename = self.directory_path + table_name + PAGE_DIR_EXTENSION # file for page directory
+        with open(filename, "w") as file:
+            for rid, address in pagedir_dict.items():
+                dir_line = str(rid) + " " \
+                             + str(address.pagerange) + " " \
+                             + str(address.flag) + " " \
+                             + str(address.pagenumber) + " " \
+                             + str(address.row) + "\n"
+                file.write(dir_line)
+
     def close(self):
         # empty the bufferpool
         while (not self.bufferpool.is_empty()):
@@ -381,6 +445,6 @@ class DiskManager:
             if (evict_page[1].dirty):
                 self.flush_page(evict_page)
         # flush the table indexes to config files and then clear dictionary of indexes
-        for table_name in self.active_table_indexes.keys():
-            self.flush_index_metadata(table_name)
+        # for table_name in self.active_table_indexes.keys():
+        #     self.flush_index_metadata(table_name)
         self.active_table_indexes.clear()

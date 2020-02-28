@@ -17,10 +17,23 @@ COLUMN_BLOCK_PAGES = 10
 # tuple indexing for table metadata (primary_key, num_columns)
 PRIMARY_KEY = 0
 COLUMNS = 1
+BASE_RID = 2
+TAIL_RID = 3
+PRID = 4
+# PRANGE_METADATA is a tuple that contains BOFFSET and TOFFSET
+PRANGE_METADATA = 5
+BOFFSET = 0
+TOFFSET = 1
+
 
 # tuple indexing for table page metadata (file_offset, num_records)
 FILE_OFFSET = 0
 NUM_RECORDS = 1
+
+BIN_EXTENSION = ".bin"
+INDEX_EXTENSION = "_index.txt"
+PAGE_DIR_EXTENSION = "_pageDir.txt"
+COLUMN_BLOCK_BYTES = PAGESIZE * COLUMN_BLOCK_PAGES
 
 def init():
     pass
