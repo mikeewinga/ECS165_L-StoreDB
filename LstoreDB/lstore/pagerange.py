@@ -7,9 +7,19 @@ Table class needs an b tree to show which page range it should
 operate on
 Index class needs to be updated to store page range index along
 with the currently saved index
+
 """
 class PageRange:
 
+    """
+    :param prid : int       #Number of page range
+    :param start : int      #Start of page range
+    :param num_columns      #Number of user data columns
+    
+    cur_tid:int holds rid of latest updated tail record
+    tps:int holds rid of last merged tail record
+    
+    """
     def __init__(self, table_name, prid, start, num_columns, diskManager):
         self.table_name = table_name
         self.prid = prid
@@ -36,6 +46,11 @@ class PageRange:
             self.diskManager.new_page(self.table_name, tail_address, x)
             # self.pages.add((0, x)) # FIXME necessary?
 
+            
+    """
+    Writes record to rid passed from table
+    
+    """
     #pass in rid from table
     def insert(self, record, rid, time):
         address = Address(self.prid, 0, self.bOffSet)
@@ -61,7 +76,13 @@ class PageRange:
                 base_address = Address(self.prid, 0, x + self.bOffSet)
                 self.diskManager.new_page(self.table_name, base_address, x)
 
-
+                
+    """
+    Converts the schema bit string to schema bit array
+    :param schema: integer bit string
+    :return: schema bit array
+    
+    """
     def getOffset(self, schema, col_num):
         if (col_num < 1):
             return []
@@ -75,7 +96,12 @@ class PageRange:
             itr = itr + 1
             bit = bit // 2
         return offset
-
+    
+    
+    """
+    Returns record by rid that has data or None in its fields (according to col_wanted) 
+    
+    """
     def return_record(self, rid, col_wanted):
         record_wanted = []
         address = self.index.read(rid)
@@ -113,6 +139,11 @@ class PageRange:
 
         return record_wanted
 
+    
+    """
+    Updates a record(that has rid=base_rid) using (param)record and it's fields according to tail_schema
+    
+    """
     def update(self, base_rid, tail_schema, record, tid, time):
         bAddress = self.index.read(base_rid)
         address = Address(self.prid, 1, self.tOffSet)
@@ -147,6 +178,11 @@ class PageRange:
         new_base_schema = cur_base_schema | tail_schema
         self.diskManager.overwrite(self.table_name, bAddress+SCHEMA_ENCODING_COLUMN, new_base_schema)
 
+        
+    """
+    Deletes a record by rid(param base_rid)
+    i.e. overwrites base and all tail rids to zero
+    """
     def delete(self, base_rid):
         address = self.index.read(base_rid)
         if self.index.delete(base_rid):
