@@ -1,11 +1,10 @@
 from lstore.page import Page
 from lstore.index import Address
 from lstore.pagerange import PageRange
+from lstore.table import *
 from lstore.config import *
 from collections import OrderedDict
 import os
-
-#from lstore.index import Address
 
 class Bufferpool:
     def __init__(self):
@@ -124,7 +123,7 @@ class DiskManager:
         self.bufferpool = Bufferpool()
         self.directory_path = ""
         self.active_table_indexes = {}  # { string table_name : {address tuple (int page_range, (int base/tail, int page_num)) : [file_offset_bytes, num_records] }}
-        self.active_table_metadata = {}  # { string table_name: (int primary key index, int num_user_columns) }
+        self.active_table_metadata = {}  # { string table_name: (int primary key index, int num_user_columns, current_rid_base, current_rid_tail, current_prid, {prid : (bOffset, tOffset)} }
 
     def set_directory_path(self, directory_path):
         self.directory_path = directory_path + "/"
@@ -161,15 +160,19 @@ class DiskManager:
         except FileExistsError:
             return False
 
-    def open_table_file(self, table_name):
-        if os.path.exists(self.directory_path + table_name + INDEX_EXTENSION)\
-                and os.path.exists(self.directory_path + table_name + BIN_EXTENSION):
-            #load the index into active_table_indexes
-            self.load_index_from_disk(table_name)
-            # FIXME self.load_pagedir_from_disk()
-            return self.active_table_metadata[table_name]
-        else:
+    def open_table_file(self, table_name, table):
+        if not (os.path.exists(self.directory_path + table_name + INDEX_EXTENSION)
+                and os.path.exists(self.directory_path + table_name + BIN_EXTENSION)
+                and os.path.exists(self.directory_path + table_name + PAGE_DIR_EXTENSION)):
             return ()
+            # return None
+        # else the files exist
+        # load the index into active_table_indexes
+        self.load_index_from_disk(table_name)
+        table_metadata = self.active_table_metadata[table_name]
+        table.set_table_metadata(table_metadata[PRIMARY_KEY], table_metadata[COLUMNS], table_metadata[BASE_RID], table_metadata[TAIL_RID], table_metadata[PRID])
+        # FIXME self.load_pagedir_from_disk()
+        return self.active_table_metadata[table_name]  # FIXME
 
     def new_page(self, table_name, address, column_index):
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
@@ -230,28 +233,6 @@ class DiskManager:
             if (evict_page[1].dirty):
                 self.flush_page(evict_page)
         self.bufferpool.merge_copy_page(table_name, address)
-        # change the base/tail flag to 2, so address refers to merge base page
-        merge_page_address = address.copy()
-        merge_page_address.change_flag(2)
-        # allocate a new page in file
-        self.new_page(table_name, merge_page_address, column_index)
-        self.bufferpool.unpin_page(table_name, address)
-        return merge_page_address
-
-    """
-    def merge_copy_page(self, table_name, address, column_index):
-        if (not self.bufferpool.contains_page(table_name, address)):
-            self.load_page_from_disk(table_name, address)
-        self.bufferpool.pin_page(table_name, address)
-        # call on bufferpool to copy the page for the merge thread, checking first if bufferpool needs to evict page
-        if (self.bufferpool.is_full()):
-            # evict page and flush it to disk if dirty
-            evict_page = self.bufferpool.evict()
-            while (len(evict_page) == 0):
-                evict_page = self.bufferpool.evict()
-            if (evict_page[1].dirty):
-                self.flush_page(evict_page)
-        self.bufferpool.merge_copy_page(table_name, address)
         # allocate a new page in file and save the physical file offset in table_index
         file_offset = self.new_page(table_name, address, column_index)
         table_index = self.active_table_indexes[table_name]
@@ -261,7 +242,6 @@ class DiskManager:
         merge_page_address.change_flag(2)
         self.bufferpool.unpin_page(table_name, address)
         return merge_page_address
-    """
 
     """
     param address: the original base page (flag = 0)
@@ -343,11 +323,9 @@ class DiskManager:
         with open(index_filename, "r") as file:
             # read primary key index and num columns metadata
             metadata_line = next(file)
-            # FIXME do something with the cur_rid_base, etc to recreate Table
-            pRange_metadata = []
             (primary_key, num_user_columns, current_rid_base, current_rid_tail, current_prid) = map(int, metadata_line.split())
-            for i in range(current_prid+1):
-                pRange_metadata.append(())
+            pRange_metadata = {}
+            for i in range(current_prid+1):  # for all the page ranges
                 pagerange_data = next(file)
                 pagerange_number, bOffset, tOffset = map(int, pagerange_data.split())
                 pRange_metadata[pagerange_number] = (bOffset, tOffset) 
@@ -357,6 +335,11 @@ class DiskManager:
                 page_range_num, base_tail, page_num, file_offset, num_records = map(int, line.split())
                 address_tuple = (page_range_num, (base_tail, page_num))
                 self.active_table_indexes[table_name][address_tuple] = [file_offset, num_records]
+
+    # def load_pagedir_from_disk(self, table_name, table):
+    #     table.
+    #     #FIXME
+    #     table_metadata = self.active_table_metadata[table_name]
 
     def load_pagedir_from_disk(self, table_name, table_class, pagerange_class, pagerange_metadata):
         dir_file = self.directory_path + table_name + PAGE_DIR_EXTENSION

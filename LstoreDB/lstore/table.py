@@ -35,20 +35,49 @@ class Table:
     :param num_columns: int     #Number of Columns: all columns are integer
     :param key: int             #Index of table key in columns
     """
-    def __init__(self, name, key, num_columns, diskManager, current_RID_base = 1, current_RID_tail = 2**64 - 1, prid = 0, ):
+    def __init__(self, name, diskManager, key = None, num_columns = None):
         self.name = name
         self.key = key
         self.num_columns = num_columns
-        self.total_base_phys_pages = num_columns + NUM_METADATA_COLUMNS
-        self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
-        self.current_Rid_base = current_RID_base
-        self.current_Rid_tail = current_RID_tail
-        self.current_Prid = prid
         self.pageranges = {}
-        self.pageranges[0] = PageRange(self.name, 0, self.current_Rid_base, num_columns, diskManager)
         self.index = PageDirectory()
         self.diskManager = diskManager
-        pass
+        if (key and num_columns): # create table from scratch
+            self.current_Rid_base = 1
+            self.current_Rid_tail = 2 ** 64 - 1
+            self.current_Prid = 0
+            self.total_base_phys_pages = num_columns + NUM_METADATA_COLUMNS
+            self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
+            # create the first empty page range
+            self.pageranges[0] = PageRange(self.name, 0, self.current_Rid_base, num_columns, diskManager)
+        else:  # table will have to be initialized manually
+            self.current_Rid_base = None
+            self.current_Rid_tail = None
+            self.current_Prid = None
+            self.total_base_phys_pages = None
+            self.total_tail_phys_pages = None
+
+    def set_table_metadata(self, primary_key, num_user_columns, current_base_rid, current_tail_rid, current_prid):
+        self.key = primary_key
+        self.num_columns = num_user_columns
+        self.current_Rid_base = current_base_rid
+        self.current_Rid_tail = current_tail_rid
+        self.current_Prid = current_prid
+        self.total_base_phys_pages = self.num_columns + NUM_METADATA_COLUMNS
+        self.total_tail_phys_pages = self.num_columns + NUM_METADATA_COLUMNS
+
+    """
+    :param metadata: tuple (int bOffset, int tOffset)
+    """
+    # def add_page_range(self, prid, metadata):
+    #     # FIXME
+    #     self.pageranges[0] = PageRange(self.name, 0, self.current_Rid_base, num_columns, diskManager)
+    #
+    # def add_pagedir_entry(self, rid, prid):
+    #     self.index.write(rid, prid)
+    #
+    # def get_page_range(self, prid):
+    #     return self.pageranges[prid]
 
     def get_timestamp(self):
         stamp = datetime.datetime.now()

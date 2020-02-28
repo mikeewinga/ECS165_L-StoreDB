@@ -32,6 +32,8 @@ class PageRange:
             tail_address = Address(self.prid, 1, x)
             self.diskManager.new_page(self.table_name, tail_address, x)
 
+
+
     #pass in rid from table
     def insert(self, record, rid, time):
         address = Address(self.prid, 0, self.bOffSet)
