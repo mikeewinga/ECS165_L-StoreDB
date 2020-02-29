@@ -24,7 +24,9 @@ PRID = 4
 PRANGE_METADATA = 5
 BOFFSET = 0
 TOFFSET = 1
-
+CUR_TID = 2
+MOFFSET = 3
+MERGE_F = 4
 
 # tuple indexing for table page metadata (file_offset, num_records)
 FILE_OFFSET = 0

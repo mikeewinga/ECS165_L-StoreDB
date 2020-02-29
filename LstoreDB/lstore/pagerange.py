@@ -10,18 +10,16 @@ with the currently saved index
 """
 class PageRange:
 
-    def __init__(self, table_name, prid, num_columns, diskManager, is_new_range, bOffset = 0, tOffset = 0):
+    """
+    :param prange_metadata: (bOffset, tOffset, cur_tid, mOffset, merge_f)
+    """
+    def __init__(self, table_name, prid, num_columns, diskManager, is_new_range, prange_metadata = None):
         self.table_name = table_name
         self.prid = prid
         self.tps = 2 ** 64 - 1
-        self.cur_tid = self.tps
         self.num_columns = num_columns
         self.total_base_phys_pages = num_columns + NUM_METADATA_COLUMNS
         self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
-        self.bOffSet = bOffset
-        self.tOffSet = tOffset
-        self.mOffSet = 0
-        self.merge_f = 0
         self.index = PageDirectory()
         self.diskManager = diskManager
         self.base = prid * RANGESIZE
@@ -29,6 +27,11 @@ class PageRange:
         self.delete_queue = []
 
         if (is_new_range):
+            self.bOffSet = 0
+            self.tOffSet = 0
+            self.cur_tid = 2**64 - 1
+            self.mOffSet = 0
+            self.merge_f = 0
             # initialize first set of base and tail pages
             for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
                 # self.pages[(0,x)] = Page()
@@ -37,13 +40,19 @@ class PageRange:
                 self.diskManager.new_page(self.table_name, base_address, x)
                 tail_address = Address(self.prid, 1, x)
                 self.diskManager.new_page(self.table_name, tail_address, x)
+        else:
+            self.bOffSet = prange_metadata[BOFFSET]
+            self.tOffSet = prange_metadata[TOFFSET]
+            self.cur_tid = prange_metadata[CUR_TID]
+            self.mOffSet = prange_metadata[MOFFSET]
+            self.merge_f = prange_metadata[MERGE_F]
 
     def add_pagedir_entry(self, rid, address):
         self.index.write(rid, address)
 
-    def set_metadata(self, bOffset, tOffset):
-        self.bOffSet = bOffset
-        self.tOffSet = tOffset
+    # def set_metadata(self, bOffset, tOffset):
+    #     self.bOffSet = bOffset
+    #     self.tOffSet = tOffset
 
     #pass in rid from table
     def insert(self, record, rid, time):
@@ -89,6 +98,7 @@ class PageRange:
 
     def return_record(self, rid, col_wanted):
         record_wanted = []
+        #print("rid: " + str(rid))
         address = self.index.read(rid)
         update_F = [1] * len(col_wanted)
         # saves indirection column of base page in next

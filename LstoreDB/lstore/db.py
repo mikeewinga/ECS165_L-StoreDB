@@ -43,7 +43,7 @@ class Merger:
         tid = copy.deepcopy(page_Range.cur_tid)
         stoper = page_Range.mOffSet - 1
         mindex = copy.deepcopy(page_Range.index)
-        needs = [1,3]
+        needs = [3]
         for i in range(0, page_Range.num_columns):
             needs.append(i+NUM_METADATA_COLUMNS)
         while p_ind < page_Range.bOffSet:

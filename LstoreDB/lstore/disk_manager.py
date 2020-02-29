@@ -124,7 +124,7 @@ class DiskManager:
         self.bufferpool = Bufferpool()
         self.directory_path = ""
         self.active_table_indexes = {}  # { string table_name : {address tuple (int page_range, (int base/tail, int page_num)) : [file_offset_bytes, num_records] }}
-        self.active_table_metadata = {}  # { string table_name: (int primary key index, int num_user_columns, current_rid_base, current_rid_tail, current_prid, {prid : (bOffset, tOffset)} }
+        self.active_table_metadata = {}  # { string table_name: (int primary key index, int num_user_columns, current_rid_base, current_rid_tail, current_prid, {prid : (bOffset, tOffset, cur_tid, mOffset, merge_f)} }
 
     def set_directory_path(self, directory_path):
         self.directory_path = directory_path + "/"
@@ -327,8 +327,8 @@ class DiskManager:
             pRange_metadata = {}
             for i in range(current_prid+1):  # for all the page ranges
                 pagerange_data = next(file)
-                pagerange_number, bOffset, tOffset = map(int, pagerange_data.split())
-                pRange_metadata[pagerange_number] = (bOffset, tOffset) 
+                pagerange_number, bOffset, tOffset, cur_tid, mOffset, merge_f = map(int, pagerange_data.split())
+                pRange_metadata[pagerange_number] = (bOffset, tOffset, cur_tid, mOffset, merge_f)
             self.active_table_metadata[table_name] = (primary_key, num_user_columns, current_rid_base, current_rid_tail, current_prid, pRange_metadata)
             # split each line in file and save as key-value pairs in dictionary index
             for line in file:
@@ -342,8 +342,7 @@ class DiskManager:
         num_page_ranges = table_metadata[PRID] + 1
         prange_metadata = table_metadata[PRANGE_METADATA]
         for prid in range(num_page_ranges):
-            table.add_page_range(prid, prange_metadata[prid][BOFFSET], prange_metadata[prid][TOFFSET])
-        #FIXME do more here
+            table.add_page_range(prid, prange_metadata[prid])
         # read in page directory and add into table's and page range's page directories
         dir_file = self.directory_path + table_name + PAGE_DIR_EXTENSION
         with open(dir_file, "r") as file:
@@ -396,15 +395,18 @@ class DiskManager:
             file.write(metadata_line)
 
     """
-    :param metadata_dict: { int prid : (int bOffset, int tOffset) }
+    :param metadata_dict: { int prid : (int bOffset, int tOffset, int cur_tid, int mOffset, int merge_f) }
     """
     def flush_pagerange_metadata(self, table_name, metadata_dict):
         filename = self.directory_path + table_name + INDEX_EXTENSION # file for table index
         with open(filename, "a") as file:
             for prid in metadata_dict:
-                page_range_line = str(prid) + " "\
-                                  + str(metadata_dict[prid][0]) + " "\
-                                  + str(metadata_dict[prid][1]) + "\n"
+                page_range_line = str(prid) + " " \
+                                  + str(metadata_dict[prid][BOFFSET]) + " " \
+                                  + str(metadata_dict[prid][TOFFSET]) + " " \
+                                  + str(metadata_dict[prid][CUR_TID]) + " " \
+                                  + str(metadata_dict[prid][MOFFSET]) + " " \
+                                  + str(metadata_dict[prid][MERGE_F]) + "\n"
                 file.write(page_range_line)
 
     """

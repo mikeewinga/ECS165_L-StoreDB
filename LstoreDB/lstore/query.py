@@ -42,6 +42,7 @@ class Query:
     def select(self, key, column, query_columns):
         # create index for column if needed
         self.index.create_index(column)
+        #print("primary key: " + str(key))
         rid = self.index.locate(column, key)
         record_set = []
         for item in rid:
