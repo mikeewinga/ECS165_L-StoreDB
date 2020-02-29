@@ -43,16 +43,14 @@ def merge(table, page_Range):
             b_pages[i+p_ind] = diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind+i), i)
         p_ind = p_ind + step
 
-    #control.release()
+    control.release()
 
     address = mindex.read(tid)
     t_page = address.pagenumber
     t_row = address.row
-    #print(t_page, t_row)
 
     #diskManager.debug_print_page(table, b_pages[(0, 1)])
     #look at last tail page, potentially not full
-    #comment
     for cur_page in range(t_page, -1, -step):
         for recNum in range (t_row, 0, -1):
             address = Address(page_Range.prid, 1, cur_page, recNum)
@@ -81,17 +79,22 @@ def merge(table, page_Range):
                     diskManager.overwrite(table, target, value)
 
             #convert new base schema to binary and store back to base record
-            #mergeRange.pages[baddress+SCHEMA_ENCODING_COLUMN].overwrite_record(baddress.row, resultingBaseSchema)
+            diskManager.overwrite(table,taddress+SCHEMA_ENCODING_COLUMN,resultingBaseSchema)
         t_row = 511
     p_ind = 0
-    #control.acquire()
+    control.acquire()
+    #handle delete queue
+    for rid in page_Range.delete_queue:
+        address = mindex.read(rid).copy()
+        address.change_flag(2)
+        diskManager.overwrite(table, address+1, 0)
+    #swap pages
     while p_ind < page_Range.bOffSet:
         for x in needs:
             address = Address(page_Range.prid, 0, p_ind+x)
             diskManager.merge_replace_page(table, address)
         p_ind = p_ind + step
     #page_Range.pages = mergeRange.pages
-    #handle delete queue
     #handle swapping tal records
     control.release()
 
@@ -131,7 +134,7 @@ class Database():
         control = BoundedSemaphore(1)
         self.control = control
         merger = threading.Thread(target=mergeLoop)
-        #merger.start()
+        merger.start()
         pass
 
     def open(self, path):

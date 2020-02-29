@@ -64,7 +64,6 @@ class PageRange:
             self.diskManager.append_write(self.table_name, address + (x+NUM_METADATA_COLUMNS), record.columns[x])
         # expand new base pages if needed
         if not self.diskManager.page_has_capacity(self.table_name, address):
-            print(rid)
             if rid == self.cap:
                 self.merge_f = 1
             self.bOffSet = self.bOffSet + self.num_columns + NUM_METADATA_COLUMNS

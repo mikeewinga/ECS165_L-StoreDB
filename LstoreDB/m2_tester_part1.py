@@ -50,6 +50,15 @@ for _ in range(3):
             #    print('update on', original, 'and', updated_columns, ':', record)
             updated_columns[i] = None
 print("Update finished")
+for key in keys:
+    record = query.select(key, 0, [1, 1, 1, 1, 1])[0]
+    error = False
+    for j, column in enumerate(record.columns):
+        if column != records[key][j]:
+            error = True
+    if error:
+        print('update error on', original, 'and', updated_columns, ':', record, ', correct:', records[key])
+print("Self Update Finished(delete this later)")
 
 for i in range(0, 100):
     r = sorted(sample(range(0, len(keys)), 2))
