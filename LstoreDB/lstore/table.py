@@ -66,10 +66,9 @@ class Table:
         self.total_base_phys_pages = self.num_columns + NUM_METADATA_COLUMNS
         self.total_tail_phys_pages = self.num_columns + NUM_METADATA_COLUMNS
 
-    def add_page_range(self, prid, bOffset, tOffset):
-        #FIXME
+    def add_page_range(self, prid, bOffset, tOffset, cur_tid):
         is_new_range = False
-        self.pageranges[prid] = PageRange(self.name, prid, self.num_columns, self.diskManager, is_new_range, bOffset, tOffset)
+        self.pageranges[prid] = PageRange(self.name, prid, self.num_columns, self.diskManager, is_new_range, bOffset, tOffset, cur_tid)
 
     def add_pagedir_entry(self, rid, prid):
         self.index.write(rid, prid)
@@ -145,7 +144,7 @@ class Table:
         for prid in self.pageranges:
             pagedir_dict = self.pageranges[prid].get_pagedir_dict()
             overall_page_directory.update(pagedir_dict)
-            page_range_metadata[prid] = (self.pageranges[prid].bOffSet, self.pageranges[prid].tOffSet)
+            page_range_metadata[prid] = (self.pageranges[prid].bOffSet, self.pageranges[prid].tOffSet, self.pageranges[prid].cur_tid)
 
         # flush table and page range metadata into table index file
         self.diskManager.flush_table_metadata(self.name, self.current_Rid_base, self.current_Rid_tail, self.current_Prid)

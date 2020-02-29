@@ -326,8 +326,8 @@ class DiskManager:
             pRange_metadata = {}
             for i in range(current_prid+1):  # for all the page ranges
                 pagerange_data = next(file)
-                pagerange_number, bOffset, tOffset = map(int, pagerange_data.split())
-                pRange_metadata[pagerange_number] = (bOffset, tOffset) 
+                pagerange_number, bOffset, tOffset, cur_tid = map(int, pagerange_data.split())
+                pRange_metadata[pagerange_number] = (bOffset, tOffset, cur_tid)
             self.active_table_metadata[table_name] = (primary_key, num_user_columns, current_rid_base, current_rid_tail, current_prid, pRange_metadata)
             # split each line in file and save as key-value pairs in dictionary index
             for line in file:
@@ -341,8 +341,7 @@ class DiskManager:
         num_page_ranges = table_metadata[PRID] + 1
         prange_metadata = table_metadata[PRANGE_METADATA]
         for prid in range(num_page_ranges):
-            table.add_page_range(prid, prange_metadata[prid][BOFFSET], prange_metadata[prid][TOFFSET])
-        #FIXME do more here
+            table.add_page_range(prid, prange_metadata[prid][BOFFSET], prange_metadata[prid][TOFFSET], prange_metadata[prid][CUR_TID])
         # read in page directory and add into table's and page range's page directories
         dir_file = self.directory_path + table_name + PAGE_DIR_EXTENSION
         with open(dir_file, "r") as file:
@@ -395,15 +394,16 @@ class DiskManager:
             file.write(metadata_line)
 
     """
-    :param metadata_dict: { int prid : (int bOffset, int tOffset) }
+    :param metadata_dict: { int prid : (int bOffset, int tOffset, int cur_tid) }
     """
     def flush_pagerange_metadata(self, table_name, metadata_dict):
         filename = self.directory_path + table_name + INDEX_EXTENSION # file for table index
         with open(filename, "a") as file:
             for prid in metadata_dict:
                 page_range_line = str(prid) + " "\
-                                  + str(metadata_dict[prid][0]) + " "\
-                                  + str(metadata_dict[prid][1]) + "\n"
+                                  + str(metadata_dict[prid][BOFFSET]) + " "\
+                                  + str(metadata_dict[prid][TOFFSET]) + " "\
+                                  + str(metadata_dict[prid][CUR_TID]) + "\n"
                 file.write(page_range_line)
 
     """

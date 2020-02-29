@@ -10,11 +10,10 @@ with the currently saved index
 """
 class PageRange:
 
-    def __init__(self, table_name, prid, num_columns, diskManager, is_new_range, bOffset = 0, tOffset = 0):
+    def __init__(self, table_name, prid, num_columns, diskManager, is_new_range, bOffset = 0, tOffset = 0, cur_tid = 2**64 - 1):
         self.table_name = table_name
         self.prid = prid
-        self.tps = 2 ** 64 - 1
-        self.cur_tid = self.tps
+        self.cur_tid = cur_tid
         self.num_columns = num_columns
         self.total_base_phys_pages = num_columns + NUM_METADATA_COLUMNS
         self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
@@ -39,9 +38,10 @@ class PageRange:
     def add_pagedir_entry(self, rid, address):
         self.index.write(rid, address)
 
-    def set_metadata(self, bOffset, tOffset):
+    def set_metadata(self, bOffset, tOffset, cur_tid):
         self.bOffSet = bOffset
         self.tOffSet = tOffset
+        self.cur_tid = cur_tid
 
     #pass in rid from table
     def insert(self, record, rid, time):
