@@ -6,129 +6,134 @@ from threading import BoundedSemaphore
 import threading
 import time
 import copy
-
-def getOffset(schema, col_num):
-    if (col_num < 1):
-        return []
-    offset = [0] * col_num
-    bit = 2 ** (col_num-1)
-    itr = 0
-    while (bit > 0):
-        if((schema - bit) >= 0):
-            offset[itr] = 1
-            schema = schema - bit
-        itr = itr + 1
-        bit = bit // 2
-    return offset
-
-def merge(table, page_Range):
-    global control
-    global diskManager
-    control.acquire()
-    print("merging", page_Range.mOffSet, page_Range.tOffSet)
-    #acquire all required resources that are time critical
-    #clear delete_queue
-    page_Range.delete_queue = []
-    #create copy of base pages (bRID, base schema, user data pages)and insert newTPS in each of them
-    b_pages = {}
-    p_ind = 0
-    step = NUM_METADATA_COLUMNS + page_Range.num_columns
-    tid = copy.deepcopy(page_Range.cur_tid)
-    stoper = page_Range.mOffSet - 1
-    mindex = copy.deepcopy(page_Range.index)
-    needs = [1,3]
-    for i in range(0, page_Range.num_columns):
-        needs.append(i+NUM_METADATA_COLUMNS)
-    while p_ind < page_Range.bOffSet:
-        for i in needs:
-            b_pages[i+p_ind] = diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind+i), i)
-        p_ind = p_ind + step
-    page_Range.merge_helper()
-    page_Range.mOffSet = copy.deepcopy(page_Range.tOffSet)
-    #control.release()
-
-    address = mindex.read(2)
-    for i in range(page_Range.num_columns+NUM_METADATA_COLUMNS):
-        val = diskManager.read(table, address+i)
-        #print(int.from_bytes(val, byteorder="big"))
-    address = mindex.read(tid)
-    t_page = address.pagenumber
-    t_row = address.row
-
-    #diskManager.debug_print_page(table, b_pages[(0, 1)])
-    #look at last tail page, potentially not full
-    for cur_page in range(t_page, stoper, -step):
-        for recNum in range (t_row, 0, -1):
-            address = Address(page_Range.prid, 1, cur_page, recNum)
-            base_rid = diskManager.read(table, address+4)
-            base_rid = int.from_bytes(base_rid, byteorder = "big")
-            baddress = mindex.read(base_rid).copy()
-            b = baddress
-            tSchema = diskManager.read(table, address+SCHEMA_ENCODING_COLUMN)
-            bSchema = diskManager.read(table, baddress+SCHEMA_ENCODING_COLUMN)
-            tSchema = int.from_bytes(tSchema, byteorder = "big")
-            bSchema = int.from_bytes(bSchema, byteorder = "big")
-
-            schemaToUpdate = bSchema & tSchema #bitwise AND
-
-            resultingBaseSchema = bSchema & (~tSchema)  #bitwise AND_NOT
-            taddress = baddress
-            taddress.change_flag(2)
-            # split schemaToUpdate into bool array [0,1,0,...]
-            schemaToUpdate = getOffset(schemaToUpdate, page_Range.num_columns)
-            #if cur_page == 0 and recNum == 1:
-            for x in range(0, len(schemaToUpdate)):
-                if (schemaToUpdate[x]):
-                    value = diskManager.read(table, address+(NUM_METADATA_COLUMNS+x))
-                    value = int.from_bytes(value, byteorder = "big")
-                    target = taddress+(NUM_METADATA_COLUMNS+x)
-                    diskManager.overwrite(table, target, value)
-
-            #convert new base schema to binary and store back to base record
-            #diskManager.overwrite(table,taddress+SCHEMA_ENCODING_COLUMN,resultingBaseSchema)
-        t_row = 511
-    p_ind = 0
-    #control.acquire()
-    #handle delete queue
-    for rid in page_Range.delete_queue:
-        address = mindex.read(rid).copy()
-        address.change_flag(2)
-        diskManager.overwrite(table, address+1, 0)
-    #swap pages
-    while p_ind < page_Range.bOffSet:
-        for x in needs:
-            address = Address(page_Range.prid, 0, p_ind+x)
-            diskManager.merge_replace_page(table, address)
-        p_ind = p_ind + step
-    while p_ind < page_Range.bOffSet:
-        for i in range(page_Range.num_columns+NUM_METADATA_COLUMNS):
-            diskManager.overwrite(table, Address(page_Range.prid, 0, i+p_ind,0), tid)
-        p_ind = p_ind + step
-    page_Range.tps = tid
-    control.release()
+import sys
 
 global control
 
-def mergeLoop():
-    t_ind = 0
-    pr_ind = 5
-    global tables
-    global diskManager
-    global control
-    while 1:
-        if t_ind < len(tables):
-            pagenum = len(tables[t_ind].pageranges)
-            while pr_ind < pagenum:
-                if(tables[t_ind].pageranges[pr_ind].merge_f and tables[t_ind].pageranges[pr_ind].merge()):
-                    merge(tables[t_ind].name, tables[t_ind].pageranges[pr_ind])
+class Merger:
+    def __init__(self):
+        self._running = 1
+
+    def getOffset(self,schema, col_num):
+        if (col_num < 1):
+            return []
+        offset = [0] * col_num
+        bit = 2 ** (col_num-1)
+        itr = 0
+        while (bit > 0):
+            if((schema - bit) >= 0):
+                offset[itr] = 1
+                schema = schema - bit
+            itr = itr + 1
+            bit = bit // 2
+        return offset
+
+    def merge(self,table, page_Range):
+        global control
+        global diskManager
+        control.acquire()
+        print("merging", page_Range.prid, page_Range.tOffSet)
+        #acquire all required resources that are time critical
+        #clear delete_queue
+        page_Range.delete_queue = []
+        #create copy of base pages (bRID, base schema, user data pages)and insert newTPS in each of them
+        b_pages = {}
+        p_ind = 0
+        step = NUM_METADATA_COLUMNS + page_Range.num_columns
+        tid = copy.deepcopy(page_Range.cur_tid)
+        stoper = page_Range.mOffSet - 1
+        mindex = copy.deepcopy(page_Range.index)
+        needs = [1,3]
+        for i in range(0, page_Range.num_columns):
+            needs.append(i+NUM_METADATA_COLUMNS)
+        while p_ind < page_Range.bOffSet:
+            for i in needs:
+                b_pages[i+p_ind] = diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind+i), i)
+            p_ind = p_ind + step
+        page_Range.merge_helper()
+        page_Range.mOffSet = copy.deepcopy(page_Range.tOffSet)
+        #control.release()
+
+
+        address = mindex.read(tid)
+        t_page = address.pagenumber
+        t_row = address.row
+
+        #diskManager.debug_print_page(table, b_pages[(0, 1)])
+        #look at last tail page, potentially not full
+        for cur_page in range(t_page, stoper, -step):
+            for recNum in range (t_row, 0, -1):
+                address = Address(page_Range.prid, 1, cur_page, recNum)
+                base_rid = diskManager.read(table, address+4)
+                base_rid = int.from_bytes(base_rid, byteorder = "big")
+                baddress = mindex.read(base_rid).copy()
+                b = baddress
+                tSchema = diskManager.read(table, address+SCHEMA_ENCODING_COLUMN)
+                bSchema = diskManager.read(table, baddress+SCHEMA_ENCODING_COLUMN)
+                tSchema = int.from_bytes(tSchema, byteorder = "big")
+                bSchema = int.from_bytes(bSchema, byteorder = "big")
+
+                schemaToUpdate = bSchema & tSchema #bitwise AND
+
+                resultingBaseSchema = bSchema & (~tSchema)  #bitwise AND_NOT
+                taddress = baddress
+                taddress.change_flag(2)
+                # split schemaToUpdate into bool array [0,1,0,...]
+                schemaToUpdate = self.getOffset(schemaToUpdate, page_Range.num_columns)
+                #if cur_page == 0 and recNum == 1:
+                for x in range(0, len(schemaToUpdate)):
+                    if (schemaToUpdate[x]):
+                        value = diskManager.read(table, address+(NUM_METADATA_COLUMNS+x))
+                        value = int.from_bytes(value, byteorder = "big")
+                        target = taddress+(NUM_METADATA_COLUMNS+x)
+                        diskManager.overwrite(table, target, value)
+
+                #convert new base schema to binary and store back to base record
+                #diskManager.overwrite(table,taddress+SCHEMA_ENCODING_COLUMN,resultingBaseSchema)
+            t_row = 511
+        p_ind = 0
+        #control.acquire()
+        #handle delete queue
+        for rid in page_Range.delete_queue:
+            address = mindex.read(rid).copy()
+            address.change_flag(2)
+            diskManager.overwrite(table, address+1, 0)
+        #swap pages
+        while p_ind < page_Range.bOffSet:
+            for x in needs:
+                address = Address(page_Range.prid, 0, p_ind+x)
+                diskManager.merge_replace_page(table, address)
+            p_ind = p_ind + step
+        while p_ind < page_Range.bOffSet:
+            for i in range(page_Range.num_columns+NUM_METADATA_COLUMNS):
+                diskManager.overwrite(table, Address(page_Range.prid, 0, i+p_ind,0), tid)
+            p_ind = p_ind + step
+        page_Range.tps = tid
+        control.release()
+
+    def mergeLoop(self):
+        t_ind = 0
+        pr_ind = 5
+        global tables
+        global diskManager
+        global control
+        self.endl = 1
+        while self._running:
+            if t_ind < len(tables):
+                pagenum = len(tables[t_ind].pageranges)
+                while pr_ind < pagenum:
+                    #endl.acquire()
+                    if(tables[t_ind].pageranges[pr_ind].merge_f and tables[t_ind].pageranges[pr_ind].merge()):
+                        self.merge(tables[t_ind].name, tables[t_ind].pageranges[pr_ind])
+                        #tables[t_ind].pageranges[pr_ind].merge_f = 0
+                    pr_ind = pr_ind + 1
+                    #endl.release()
                     time.sleep(0)
-                    #tables[t_ind].pageranges[pr_ind].merge_f = 0
-                pr_ind = pr_ind + 1
-            pr_ind = 0
-            t_ind = t_ind + 1
-        else:
-            time.sleep(0)
-            t_ind = 0
+                pr_ind = 0
+                t_ind = t_ind + 1
+            else:
+                time.sleep(0)
+                t_ind = 0
 
 class Database():
 
@@ -142,9 +147,12 @@ class Database():
         self.diskManager = diskManager
         global control
         control = BoundedSemaphore(1)
+        endl = 1
         self.control = control
-        merger = threading.Thread(target=mergeLoop)
-        merger.start()
+        self.endl = endl
+        self.merger = Merger()
+        self.merge_t = threading.Thread(target=self.merger.mergeLoop)
+        self.merge_t.start()
         pass
 
     def open(self, path):
@@ -152,7 +160,8 @@ class Database():
         pass
 
     def close(self):
-        self.control.acquire()
+        self.merger._running = 0
+        self.merge_t.join()
         for tbl in tables:
             tbl.close()
         self.diskManager.close()
