@@ -20,6 +20,7 @@ class PageRange:
         self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
         self.bOffSet = bOffset
         self.tOffSet = tOffset
+        self.mOffSet = 0
         self.merge_f = 0
         self.index = PageDirectory()
         self.diskManager = diskManager
@@ -104,6 +105,8 @@ class PageRange:
 
         # follow indirection column to updated tail records
         while next: # if next != 0, must follow tail records
+            if (next >= self.tps):
+                return record_wanted
             # get page number and offset of tail record
             address = self.index.read(next)
             # get schema column of tail record
@@ -122,6 +125,15 @@ class PageRange:
             next = int.from_bytes(next, byteorder = "big")
 
         return record_wanted
+
+    def merge_helper(self):
+        self.tOffSet = self.tOffSet + self.num_columns + NUM_METADATA_COLUMNS
+        for x in range(self.num_columns + NUM_METADATA_COLUMNS):
+            tail_address = Address(self.prid, 1, x + self.tOffSet)
+            self.diskManager.new_page(self.table_name, tail_address, x)
+            
+    def merge(self):
+        return self.tOffSet > self.mOffSet+39
 
     def update(self, base_rid, tail_schema, record, tid, time):
         bAddress = self.index.read(base_rid)

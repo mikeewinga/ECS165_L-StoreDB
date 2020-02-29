@@ -22,10 +22,10 @@ def getOffset(schema, col_num):
     return offset
 
 def merge(table, page_Range):
-    print("merging")
     global control
     global diskManager
     control.acquire()
+    print("merging", page_Range.mOffSet, page_Range.tOffSet)
     #acquire all required resources that are time critical
     #clear delete_queue
     page_Range.delete_queue = []
@@ -33,7 +33,8 @@ def merge(table, page_Range):
     b_pages = {}
     p_ind = 0
     step = NUM_METADATA_COLUMNS + page_Range.num_columns
-    tid = page_Range.cur_tid
+    tid = copy.deepcopy(page_Range.cur_tid)
+    stoper = page_Range.mOffSet - 1
     mindex = copy.deepcopy(page_Range.index)
     needs = [1,3]
     for i in range(0, page_Range.num_columns):
@@ -42,16 +43,21 @@ def merge(table, page_Range):
         for i in needs:
             b_pages[i+p_ind] = diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind+i), i)
         p_ind = p_ind + step
+    page_Range.merge_helper()
+    page_Range.mOffSet = copy.deepcopy(page_Range.tOffSet)
+    #control.release()
 
-    control.release()
-
+    address = mindex.read(2)
+    for i in range(page_Range.num_columns+NUM_METADATA_COLUMNS):
+        val = diskManager.read(table, address+i)
+        #print(int.from_bytes(val, byteorder="big"))
     address = mindex.read(tid)
     t_page = address.pagenumber
     t_row = address.row
 
     #diskManager.debug_print_page(table, b_pages[(0, 1)])
     #look at last tail page, potentially not full
-    for cur_page in range(t_page, -1, -step):
+    for cur_page in range(t_page, stoper, -step):
         for recNum in range (t_row, 0, -1):
             address = Address(page_Range.prid, 1, cur_page, recNum)
             base_rid = diskManager.read(table, address+4)
@@ -79,10 +85,10 @@ def merge(table, page_Range):
                     diskManager.overwrite(table, target, value)
 
             #convert new base schema to binary and store back to base record
-            diskManager.overwrite(table,taddress+SCHEMA_ENCODING_COLUMN,resultingBaseSchema)
+            #diskManager.overwrite(table,taddress+SCHEMA_ENCODING_COLUMN,resultingBaseSchema)
         t_row = 511
     p_ind = 0
-    control.acquire()
+    #control.acquire()
     #handle delete queue
     for rid in page_Range.delete_queue:
         address = mindex.read(rid).copy()
@@ -94,8 +100,11 @@ def merge(table, page_Range):
             address = Address(page_Range.prid, 0, p_ind+x)
             diskManager.merge_replace_page(table, address)
         p_ind = p_ind + step
-    #page_Range.pages = mergeRange.pages
-    #handle swapping tal records
+    while p_ind < page_Range.bOffSet:
+        for i in range(page_Range.num_columns+NUM_METADATA_COLUMNS):
+            diskManager.overwrite(table, Address(page_Range.prid, 0, i+p_ind,0), tid)
+        p_ind = p_ind + step
+    page_Range.tps = tid
     control.release()
 
 global control
@@ -110,9 +119,10 @@ def mergeLoop():
         if t_ind < len(tables):
             pagenum = len(tables[t_ind].pageranges)
             while pr_ind < pagenum:
-                if(tables[t_ind].pageranges[pr_ind].merge_f and tables[t_ind].pageranges[pr_ind].tOffSet):
+                if(tables[t_ind].pageranges[pr_ind].merge_f and tables[t_ind].pageranges[pr_ind].merge()):
                     merge(tables[t_ind].name, tables[t_ind].pageranges[pr_ind])
-                    tables[t_ind].pageranges[pr_ind].merge_f = 0
+                    time.sleep(0)
+                    #tables[t_ind].pageranges[pr_ind].merge_f = 0
                 pr_ind = pr_ind + 1
             pr_ind = 0
             t_ind = t_ind + 1
@@ -142,6 +152,7 @@ class Database():
         pass
 
     def close(self):
+        self.control.acquire()
         for tbl in tables:
             tbl.close()
         self.diskManager.close()

@@ -45,7 +45,7 @@ class Table:
         self.diskManager = diskManager
         if (key != None and num_columns != None): # create table from scratch
             self.current_Rid_base = 1
-            self.current_Rid_tail = 2 ** 64 - 1
+            self.current_Rid_tail = 2 ** 64 - 2
             self.current_Prid = 0
             self.total_base_phys_pages = num_columns + NUM_METADATA_COLUMNS
             self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS

@@ -58,6 +58,7 @@ class Bufferpool:
     def merge_copy_page(self, table_name, address):
         page = self.page_map[(table_name, address.pagerange, address.page)]
         new_page = page.copy()
+        new_page.unpin()
         # change the base/tail flag to 2, so address refers to merge base page
         self.page_map[(table_name, address.pagerange, (2, address.pagenumber))] = new_page
 
