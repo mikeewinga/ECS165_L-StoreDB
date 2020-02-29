@@ -82,9 +82,6 @@ class Bufferpool:
     def page_has_capacity(self, table_name, address):
         return self.page_map[(table_name, address.pagerange, address.page)].has_capacity()
 
-    """
-    FIXME do we need this function?
-    """
     def delete(self, table_name, address):
         page = self.page_map[(table_name, address.pagerange, address.page)]
         del self.page_map[(table_name, address.pagerange, address.page)]
@@ -261,7 +258,7 @@ class DiskManager:
         del table_index[(merge_address.pagerange, merge_address.page)]
 
     def delete_page(self, table_name, base_tail, page_num):
-        pass #FIXME set TPS to 1 for the page to mark as deleted
+        pass
 
     def read(self, table_name, address):
         if (not self.bufferpool.contains_page(table_name, address)):

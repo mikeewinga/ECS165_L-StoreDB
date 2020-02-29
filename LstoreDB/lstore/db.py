@@ -188,7 +188,6 @@ class Database():
     # Deletes the specified table
     """
     def drop_table(self, name):
-        #FIXME
         if name in self.tables:
             del self.tables[name]
             self.num_tables = self.num_tables - 1

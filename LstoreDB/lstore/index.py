@@ -124,7 +124,6 @@ class PageDirectory:
     def read(self, RID):
         if self.indexDict.get(RID):
             return self.indexDict[RID]
-        #raise NameError('page directory did not find the given RID')  # FIXME
         return 0
 
     """
