@@ -30,7 +30,7 @@ for key in keys:
     #     print('select on', key, ':', record)
 print("Select finished")
 
-for _ in range(10):
+for _ in range(3):
     for key in keys:
         updated_columns = [None, None, None, None, None]
         for i in range(1, grades_table.num_columns):
@@ -46,8 +46,8 @@ for _ in range(10):
                     error = True
             if error:
                 print('update error on', original, 'and', updated_columns, ':', record, ', correct:', records[key])
-            # else:
-            #     print('update on', original, 'and', updated_columns, ':', record)
+            #else:
+            #    print('update on', original, 'and', updated_columns, ':', record)
             updated_columns[i] = None
 print("Update finished")
 

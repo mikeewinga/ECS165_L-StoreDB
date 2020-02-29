@@ -231,14 +231,14 @@ class DiskManager:
                 evict_page = self.bufferpool.evict()
             if (evict_page[1].dirty):
                 self.flush_page(evict_page)
-        self.bufferpool.merge_copy_page(table_name, address)
-        # allocate a new page in file and save the physical file offset in table_index
-        file_offset = self.new_page(table_name, address, column_index)
-        table_index = self.active_table_indexes[table_name]
-        # change the base/tail flag to 2, so address refers to merge base page
-        table_index[(address.pagerange, (2, address.pagenumber))] = [file_offset, 1]
         merge_page_address = address.copy()
         merge_page_address.change_flag(2)
+        # allocate a new page in file and save the physical file offset in table_index
+        file_offset = self.new_page(table_name, merge_page_address, column_index)
+        table_index = self.active_table_indexes[table_name]
+        # change the base/tail flag to 2, so address refers to merge base page
+        table_index[(merge_page_address.pagerange, merge_page_address.page)] = [file_offset, 1]
+        self.bufferpool.merge_copy_page(table_name, address)
         self.bufferpool.unpin_page(table_name, address)
         return merge_page_address
 
