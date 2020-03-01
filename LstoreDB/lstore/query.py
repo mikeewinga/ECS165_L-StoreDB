@@ -29,8 +29,7 @@ class Query:
 
     def insert(self, *columns):
         #package information into records and pass records to table
-        record = Record(self.table.current_Rid_base, self.table.key, columns)
-        self.table.insert(record)
+        self.table.insert(*columns)
 
     """
     # Read columns from a record with specified key
@@ -74,8 +73,7 @@ class Query:
         rid = self.index.locate(self.table.key, key)[0]  # since we index by primary key for update, there will only be one corresponding rid in list
         #ridr = int.from_bytes(rid[0], byteorder = "big")
         self.index.update(rid, self.table.return_record(rid, [1, 1, 1, 1, 1]), *columns)
-        record = Record(0, self.table.key, columns)
-        self.table.update(rid, schema_encoding, record)
+        self.table.update(rid, schema_encoding, *columns)
         #for item in rid:
             #itemr = int.from_bytes(item, byteorder = "big")
             #self.table.update(item, schema_encoding, record)

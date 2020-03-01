@@ -22,13 +22,14 @@ class Page:
         self.pin_count += 1
 
     def unpin(self):
-        self.pin_count -= 1
+        if self.pin_count:
+            self.pin_count -= 1
 
     """
     Checks if there is space left in page
     """
     def has_capacity(self):
-        return self.num_records < PAGESIZE/DATASIZE
+        return self.num_records < PAGESIZE//DATASIZE
 
     """
     Converts a value that may be string, int, etc. to bytes
@@ -62,7 +63,7 @@ class Page:
     Replaces current value at record_index with new value given
     """
     def overwrite_record(self, record_index, value):
-        if (record_index < PAGESIZE/DATASIZE):
+        if (record_index < PAGESIZE//DATASIZE):
             insert = self.convert_to_bytes(value)
             # Find byte position corresponding to record and overwrite the data
             pos = record_index * DATASIZE
@@ -76,9 +77,8 @@ class Page:
     :return: bytearray of 8 bytes
     """
     def read(self, index):
-        if (index < PAGESIZE/DATASIZE):
+        if (index < PAGESIZE//DATASIZE):
             # Find byte position corresponding to record and read the data
             pos = index * DATASIZE
             value = self.data[pos:pos+(DATASIZE)]
             return value
-            #print("".join("\\x%02x" % i for i in value))

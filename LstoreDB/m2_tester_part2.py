@@ -17,7 +17,7 @@ for i in range(0, 2000):
     key = 92106429 + i
     records[key] = [key, randint(0, 20), randint(0, 20), randint(0, 20), randint(0, 20)]
 keys = sorted(list(records.keys()))
-for _ in range(10):
+for _ in range(2):
     for key in keys:
         for j in range(1, grades_table.num_columns):
             value = randint(0, 20)

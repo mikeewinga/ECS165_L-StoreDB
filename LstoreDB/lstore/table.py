@@ -22,12 +22,6 @@ class Record:
         return output
 
 
-class Directory:
-
-    def __init__(self):
-        self.indexer = {}
-
-
 class Table:
 
     """
@@ -95,8 +89,9 @@ class Table:
     # Handle creation of page ranges and partition record into page ranges
     # update rid -> page range id index
     """
-    def insert(self, record):
+    def insert(self, *columns):
         self.control.acquire()
+        record = Record(self.current_Rid_base, self.key, columns)
         #handles page range indexing and allocating page ranges
         prid = (self.current_Rid_base-1)//RANGESIZE
         # IF page range id is higher than current max prid -> make new page range
@@ -134,8 +129,9 @@ class Table:
         prid = self.index.read(rid)
         return self.pageranges[prid].return_record(rid, col_wanted)
 
-    def update(self, base_rid, tail_schema, record):
+    def update(self, base_rid, tail_schema, *columns):
         self.control.acquire()
+        record = Record(0, self.key, columns)
         prid = self.index.read(base_rid)
         self.pageranges[prid].update(base_rid, tail_schema, record, self.current_Rid_tail, self.get_timestamp())
         self.current_Rid_tail = self.current_Rid_tail - 1
