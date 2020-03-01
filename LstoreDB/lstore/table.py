@@ -69,7 +69,8 @@ class Table:
         self.pageranges[prid] = PageRange(self.name, prid, self.num_columns, self.diskManager, is_new_range, prange_metadata)
 
     def add_pagedir_entry(self, rid, prid):
-        self.index.write(rid, prid)
+        #delete function
+        pass
 
     def get_page_range(self, prid):
         return self.pageranges[prid]
@@ -101,7 +102,6 @@ class Table:
         #insert record into the pagerange with rid and current time
         self.pageranges[prid].insert(record, self.current_Rid_base, self.get_timestamp())
         # update rid->page range id index
-        self.index.write(self.current_Rid_base, prid)
         self.current_Rid_base = self.current_Rid_base + 1
         self.control.release()
 
@@ -126,21 +126,20 @@ class Table:
 
     def return_record(self, rid, key, col_wanted):
         record_wanted = []
-        prid = self.index.read(rid)
+        prid = prid = (rid-1)//RANGESIZE
         return Record(rid, key, self.pageranges[prid].return_record(rid, col_wanted))
 
     def update(self, base_rid, tail_schema, *columns):
         self.control.acquire()
         record = Record(0, self.key, columns)
-        prid = self.index.read(base_rid)
+        prid = prid = (base_rid-1)//RANGESIZE
         self.pageranges[prid].update(base_rid, tail_schema, record, self.current_Rid_tail, self.get_timestamp())
         self.current_Rid_tail = self.current_Rid_tail - 1
         self.control.release()
 
     def delete(self, base_rid):
         self.control.acquire()
-        prid = self.index.read(base_rid)
-        self.index.delete(base_rid)
+        prid = prid = (base_rid-1)//RANGESIZE
         self.pageranges[prid].delete(base_rid)
         self.control.release()
 
