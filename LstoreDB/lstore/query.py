@@ -17,9 +17,10 @@ class Query:
     def delete(self, primary_key):
         rid = self.index.locate(self.table.key, primary_key)[0]
         columns_wanted = [1] * self.table.num_columns
-        record = self.table.return_record(rid, columns_wanted)
-        for col_number in range(self.table.num_columns):
-            self.index.delete(record[col_number], rid, col_number)
+        record = self.table.return_record(rid, primary_key, columns_wanted)
+        #FIXME
+        #for col_number in range(self.table.num_columns):
+            #self.index.delete(record[col_number], rid, col_number)
         self.table.delete(rid)
 
     """
@@ -46,8 +47,7 @@ class Query:
         record_set = []
         for item in rid:
             #item_I = int.from_bytes(item, byteorder = "big")
-            record_set.append(Record(item, key,
-            self.table.return_record(item, query_columns)))
+            record_set.append(self.table.return_record(item, key, query_columns))
         return record_set
 
     """
@@ -72,7 +72,7 @@ class Query:
         #get corresponding rid from key
         rid = self.index.locate(self.table.key, key)[0]  # since we index by primary key for update, there will only be one corresponding rid in list
         #ridr = int.from_bytes(rid[0], byteorder = "big")
-        self.index.update(rid, self.table.return_record(rid, [1, 1, 1, 1, 1]), *columns)
+        self.index.update(rid, self.table.return_record(rid, key, [1, 1, 1, 1, 1]).columns, *columns)
         self.table.update(rid, schema_encoding, *columns)
         #for item in rid:
             #itemr = int.from_bytes(item, byteorder = "big")
@@ -100,5 +100,5 @@ class Query:
             ridList = self.index.locate(0, n)
             for cur in ridList:
                 #curr = int.from_bytes(cur, byteorder = "big")
-                sum += self.table.return_record(cur, column_agg)[aggregate_column_index]
+                sum += self.table.return_record(cur, 0, column_agg).columns[aggregate_column_index]
         return sum
