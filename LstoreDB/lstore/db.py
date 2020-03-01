@@ -36,7 +36,7 @@ class Merger:
         #acquire all required resources that are time critical
         #clear delete_queue
         page_Range.delete_queue = []
-        #create copy of base pages (bRID, base schema, user data pages)and insert newTPS in each of them
+        #create copy of base pages (base schema, user data pages)and insert newTPS in each of them
         b_pages = {}
         p_ind = 0
         step = NUM_METADATA_COLUMNS + page_Range.num_columns
@@ -52,7 +52,7 @@ class Merger:
             p_ind = p_ind + step
         page_Range.merge_helper()
         page_Range.mOffSet = copy.deepcopy(page_Range.tOffSet)
-        control.release()
+        #control.release()
 
 
         address = mindex.read(tid)
@@ -64,7 +64,7 @@ class Merger:
         for cur_page in range(t_page, stoper, -step):
             for recNum in range (t_row, 0, -1):
                 address = Address(page_Range.prid, 1, cur_page, recNum)
-                base_rid = diskManager.read(table, address+4)
+                base_rid = diskManager.read(table, address+BASE_RID_COLUMN)
                 base_rid = int.from_bytes(base_rid, byteorder = "big")
                 baddress = mindex.read(base_rid).copy()
                 b = baddress
@@ -90,12 +90,12 @@ class Merger:
 
             t_row = 511
         p_ind = 0
-        control.acquire()
+        #control.acquire()
         #handle delete queue
         for rid in page_Range.delete_queue:
             address = mindex.read(rid).copy()
             address.change_flag(2)
-            diskManager.overwrite(table, address+1, 0)
+            diskManager.overwrite(table, address+RID_COLUMN, 0)
         #swap pages
         while p_ind < page_Range.bOffSet:
             for x in needs:
@@ -112,7 +112,7 @@ class Merger:
 
     def mergeLoop(self):
         t_ind = 0
-        pr_ind = 5
+        pr_ind = 0
         global tables
         global diskManager
         global control
