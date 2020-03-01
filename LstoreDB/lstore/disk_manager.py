@@ -364,7 +364,7 @@ class DiskManager:
             for line in file:
                 rid, pagerange_num, flag, pagenumber, row = map(int, line.split())
                 address = Address(pagerange_num, flag, pagenumber, row)
-                table.add_pagedir_entry(rid, pagerange_num)
+                #table.add_pagedir_entry(rid, pagerange_num)
                 table.get_page_range(pagerange_num).add_pagedir_entry(rid, address)
 
     # def load_pagedir_from_disk(self, table_name, table_class, pagerange_class, pagerange_metadata):

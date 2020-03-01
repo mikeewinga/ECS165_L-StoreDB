@@ -78,7 +78,8 @@ class Index:
                     rid_page_address.row = x
                     # read the rid number from page and convert from bytes to int
                     rid = int.from_bytes(self.diskManager.read(self.table.name, rid_page_address), byteorder='big',signed=False)
-                    #FIXME if rid is 0(deleted) skip
+                    if (rid == 0):  # skip because rid 0 means the record was deleted
+                        continue
                     key = self.table.return_record(rid, 0, query_columns).columns[column_number]
                     rid_list = self.indexDict[column_number].get(key)
                     if rid_list != None:  # the key already is in index so just append the rid to the mapped list

@@ -139,7 +139,7 @@ class Table:
 
     def delete(self, base_rid):
         self.control.acquire()
-        prid = prid = (base_rid-1)//RANGESIZE
+        prid = (base_rid-1)//RANGESIZE
         self.pageranges[prid].delete(base_rid)
         self.control.release()
 
