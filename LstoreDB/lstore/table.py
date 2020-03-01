@@ -126,13 +126,13 @@ class Table:
 
     def return_record(self, rid, key, col_wanted):
         record_wanted = []
-        prid = prid = (rid-1)//RANGESIZE
+        prid = (rid-1)//RANGESIZE
         return Record(rid, key, self.pageranges[prid].return_record(rid, col_wanted))
 
     def update(self, base_rid, tail_schema, *columns):
         self.control.acquire()
         record = Record(0, self.key, columns)
-        prid = prid = (base_rid-1)//RANGESIZE
+        prid = (base_rid-1)//RANGESIZE
         self.pageranges[prid].update(base_rid, tail_schema, record, self.current_Rid_tail, self.get_timestamp())
         self.current_Rid_tail = self.current_Rid_tail - 1
         self.control.release()

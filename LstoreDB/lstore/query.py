@@ -19,8 +19,8 @@ class Query:
         columns_wanted = [1] * self.table.num_columns
         record = self.table.return_record(rid, primary_key, columns_wanted)
         #FIXME
-        #for col_number in range(self.table.num_columns):
-            #self.index.delete(record[col_number], rid, col_number)
+        for col_number in range(self.table.num_columns):
+            self.index.delete(record.columns[col_number], rid, col_number)
         self.table.delete(rid)
 
     """
