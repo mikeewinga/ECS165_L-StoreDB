@@ -47,12 +47,12 @@ class Merger:
         for i in range(0, page_Range.num_columns):
             needs.append(i+NUM_METADATA_COLUMNS)
         while p_ind < page_Range.bOffSet:
-            for i in needs:
+            for i in range(page_Range.num_columns+NUM_METADATA_COLUMNS):#needs:
                 b_pages[i+p_ind] = diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind+i), i)
             p_ind = p_ind + step
         page_Range.merge_helper()
         page_Range.mOffSet = copy.deepcopy(page_Range.tOffSet)
-        #control.release()
+        control.release()
 
 
         address = mindex.read(tid)
@@ -68,6 +68,7 @@ class Merger:
                 base_rid = int.from_bytes(base_rid, byteorder = "big")
                 baddress = mindex.read(base_rid).copy()
                 b = baddress
+                baddress.change_flag(2)
                 tSchema = diskManager.read(table, address+SCHEMA_ENCODING_COLUMN)
                 bSchema = diskManager.read(table, baddress+SCHEMA_ENCODING_COLUMN)
                 tSchema = int.from_bytes(tSchema, byteorder = "big")
@@ -76,8 +77,6 @@ class Merger:
                 schemaToUpdate = bSchema & tSchema #bitwise AND
 
                 resultingBaseSchema = bSchema & (~tSchema)  #bitwise AND_NOT
-                taddress = baddress
-                taddress.change_flag(2)
                 # split schemaToUpdate into bool array [0,1,0,...]
                 schemaToUpdate = self.getOffset(schemaToUpdate, page_Range.num_columns)
                 #if cur_page == 0 and recNum == 1:
@@ -85,14 +84,13 @@ class Merger:
                     if (schemaToUpdate[x]):
                         value = diskManager.read(table, address+(NUM_METADATA_COLUMNS+x))
                         value = int.from_bytes(value, byteorder = "big")
-                        target = taddress+(NUM_METADATA_COLUMNS+x)
+                        target = baddress+(NUM_METADATA_COLUMNS+x)
                         diskManager.overwrite(table, target, value)
+                diskManager.overwrite(table, baddress+SCHEMA_ENCODING_COLUMN, resultingBaseSchema)
 
-                #convert new base schema to binary and store back to base record
-                #diskManager.overwrite(table,taddress+SCHEMA_ENCODING_COLUMN,resultingBaseSchema)
             t_row = 511
         p_ind = 0
-        #control.acquire()
+        control.acquire()
         #handle delete queue
         for rid in page_Range.delete_queue:
             address = mindex.read(rid).copy()
@@ -102,6 +100,7 @@ class Merger:
         while p_ind < page_Range.bOffSet:
             for x in needs:
                 address = Address(page_Range.prid, 0, p_ind+x)
+                print(address.pagerange, address.page)
                 diskManager.merge_replace_page(table, address)
             p_ind = p_ind + step
         while p_ind < page_Range.bOffSet:

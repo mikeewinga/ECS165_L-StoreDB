@@ -4,6 +4,7 @@ from lstore.pagerange import PageRange
 from lstore.table import *
 from lstore.config import *
 from collections import OrderedDict
+from threading import BoundedSemaphore
 import os
 
 class Bufferpool:
@@ -11,6 +12,7 @@ class Bufferpool:
         self.max_pages = BUFFERPOOL_SIZE
         # { (string table_name, int page_range, (int base/tail, int page_num)) : Page() }
         self.page_map = OrderedDict()
+        self.cont = BoundedSemaphore(1)
 
     def contains_page(self, table_name, address):
         if (table_name, address.pagerange, address.page) in self.page_map:
@@ -29,45 +31,55 @@ class Bufferpool:
     -then goes to the record offset and reads it
     """
     def read(self, table_name, address):
+        self.cont.acquire()
         self.pin_page(table_name, address)  # note that this would be critical section in multithreading
         page = self.page_map[(table_name, address.pagerange, address.page)]
         self.page_map.move_to_end((table_name, address.pagerange, address.page))
         read_value = page.read(address.row)
         self.unpin_page(table_name, address)
+        self.cont.release()
         return read_value
 
     def append_write(self, table_name, address, value):
+        self.cont.acquire()
         self.pin_page(table_name, address)  # note that this would be critical section in multithreading
         page = self.page_map[(table_name, address.pagerange, address.page)]
         page.write(value)
         page.dirty = True
         self.page_map.move_to_end((table_name, address.pagerange, address.page))
         self.unpin_page(table_name, address)
+        self.cont.release()
 
     def overwrite(self, table_name, address, value):
+        self.cont.acquire()
         self.pin_page(table_name, address)  # note that this would be critical section in multithreading
         page = self.page_map[(table_name, address.pagerange, address.page)]
         page.overwrite_record(address.row, value)
         page.dirty = True
         self.page_map.move_to_end((table_name, address.pagerange, address.page))
         self.unpin_page(table_name, address)
+        self.cont.release()
 
     """
     param address: the Address object of the original base page to copy (flag = 0)
     """
     def merge_copy_page(self, table_name, address):
+        self.cont.acquire()
         page = self.page_map[(table_name, address.pagerange, address.page)]
         new_page = page.copy()
         new_page.unpin()
         # change the base/tail flag to 2, so address refers to merge base page
         self.page_map[(table_name, address.pagerange, (2, address.pagenumber))] = new_page
+        self.cont.release()
 
     """
     param address: the original base page (flag = 0)
     """
     def merge_replace_page(self, table_name, address):
+        self.cont.acquire()
         orig_page = self.page_map[(table_name, address.pagerange, address.page)]
         orig_page.pin()
+        print(address.pagerange, address.page)
         merge_address = address.copy()
         merge_address.change_flag(2)  # change the base/tail flag to 2, so address refers to merge base page
         merge_page = self.page_map[(table_name, merge_address.pagerange, merge_address.page)]
@@ -78,6 +90,7 @@ class Bufferpool:
         self.page_map[(table_name, address.pagerange, address.page)] = merge_page
         orig_page.unpin()
         merge_page.unpin()
+        self.cont.release()
 
     def page_has_capacity(self, table_name, address):
         return self.page_map[(table_name, address.pagerange, address.page)].has_capacity()
@@ -91,6 +104,7 @@ class Bufferpool:
     Delete the LRU page
     """
     def evict(self):
+        self.cont.acquire()
         # popItem pops and returns (key, value) in FIFO order with False arg
         address_to_page = self.page_map.popitem(False)
         table_name = address_to_page[0][0]
@@ -99,12 +113,16 @@ class Bufferpool:
         page = address_to_page[1]
         if (page.pin_count > 0):  # page is in use
             self.page_map[(table_name, page_range_num, page_num)] = page  # re-add the page back into dictionary
+            self.cont.release()
             return ()
         else:
+            self.cont.release()
             return address_to_page
 
     def add_page(self, table_name, address, page):
+        self.cont.acquire()
         self.page_map[(table_name, address.pagerange, address.page)] = page
+        self.cont.release()
         # self.page_map.move_to_end((table_name, address.pagerange, address.page))
 
     def pin_page(self, table_name, address):
