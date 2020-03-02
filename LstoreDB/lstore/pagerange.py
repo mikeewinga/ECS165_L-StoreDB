@@ -143,6 +143,7 @@ class PageRange:
             self.diskManager.new_page(self.table_name, tail_address, x)
             
     def merge(self):
+        # we merge four tail pages at a time (first three pages are full, fourth may be partially full)
         return self.tOffSet > self.mOffSet+39
 
     def update(self, base_rid, tail_schema, record, tid, time):

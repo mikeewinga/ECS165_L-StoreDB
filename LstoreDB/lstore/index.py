@@ -12,10 +12,13 @@ class Index:
     def __init__(self, table):
         self.table = table
         self.diskManager = table.diskManager
-        self.hasIndex = [0]*table.num_columns
         #self.indexDict = [{}]*table.num_columns
         self.indexDict = []
-        for i in range(table.num_columns):
+            
+    def set_width(self, num_columns):
+        self.hasIndex = [0]*num_columns
+        print(num_columns)
+        for i in range(num_columns):
             self.indexDict.append({})  # each dictionary maps {key value : list of RID's}
 
     """
@@ -78,7 +81,9 @@ class Index:
                     rid_page_address.row = x
                     # read the rid number from page and convert from bytes to int
                     rid = int.from_bytes(self.diskManager.read(self.table.name, rid_page_address), byteorder='big',signed=False)
-                    key = self.table.return_record(rid, query_columns)[column_number]
+                    if rid == 0:
+                        continue
+                    key = self.table.return_record(rid, 0, query_columns).columns[column_number]
                     rid_list = self.indexDict[column_number].get(key)
                     if rid_list != None:  # the key already is in index so just append the rid to the mapped list
                         rid_list = rid_list.append(rid)
@@ -95,6 +100,7 @@ class Index:
                 del self.indexDict[column_number][key]
             else:
                 ridList.remove(RID)
+                self.indexDict[column_number][key] = ridList
             return 1
         return 0
 
