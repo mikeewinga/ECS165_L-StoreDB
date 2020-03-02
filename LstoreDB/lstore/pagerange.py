@@ -144,7 +144,7 @@ class PageRange:
             
     def merge(self):
         # we merge four tail pages at a time (first three pages are full, fourth may be partially full)
-        return self.tOffSet > self.mOffSet+39
+        return self.tOffSet > self.mOffSet+(self.num_columns+NUM_METADATA_COLUMNS)*4-1
 
     def update(self, base_rid, tail_schema, record, tid, time):
         bAddress = self.index.read(base_rid)
