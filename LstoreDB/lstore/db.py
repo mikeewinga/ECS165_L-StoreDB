@@ -138,8 +138,6 @@ class Database():
     def __init__(self):
         global tables
         tables = []
-        #self.tables = {}  # maps {string name : Table}
-        #self.num_tables = 0
         global diskManager
         diskManager = DiskManager()
         self.diskManager = diskManager
@@ -151,11 +149,9 @@ class Database():
         self.merger = Merger()
         self.merge_t = threading.Thread(target=self.merger.mergeLoop)
         self.merge_t.start()
-        pass
 
     def open(self, path):
         self.diskManager.set_directory_path(path)
-        pass
 
     def close(self):
         self.merger._running = 0
@@ -164,7 +160,6 @@ class Database():
             tbl.close()
         self.diskManager.close()
         print("database closed\n")
-        pass
 
     """
     # Creates a new table
@@ -179,24 +174,19 @@ class Database():
             return table
         else:
             return None
-        #self.tables[name] = table
-        #self.num_tables = self.num_tables + 1
 
     """
     # Deletes the specified table
     """
     def drop_table(self, name):
-        if name in self.tables:
-            del self.tables[name]
-            self.num_tables = self.num_tables - 1
-        pass
+        global tables
+        if name in tables:
+            del tables[name]
 
     """
     # Retruns table with the passed name
     """
     def get_table(self, name):
-        #table_metadata = self.diskManager.open_table_file(name)
-        #if (len(table_metadata) != 0):  # the table file and metadata exist
         table = Table(name, self.diskManager, self.control)
         if (self.diskManager.open_table_file(name, table) == None):
             return None
