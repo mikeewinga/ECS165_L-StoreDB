@@ -1,5 +1,4 @@
-from lstore.table import Table, Record
-from lstore.index import Index
+from lstore.table import Table
 
 
 class Query:
@@ -9,19 +8,12 @@ class Query:
 
     def __init__(self, table):
         self.table = table
-        self.index = Index(table)
 
     """
     Deletes key from database and index
     """
     def delete(self, primary_key):
-        rid = self.index.locate(self.table.key, primary_key)[0]
-        columns_wanted = [1] * self.table.num_columns
-        record = self.table.return_record(rid, primary_key, columns_wanted)
-        #FIXME
-        for col_number in range(self.table.num_columns):
-            self.index.delete(record.columns[col_number], rid, col_number)
-        self.table.delete(rid)
+        self.table.delete(primary_key)
 
     """
     # Insert a record with specified columns
@@ -40,15 +32,7 @@ class Query:
     """
 
     def select(self, key, column, query_columns):
-        # create index for column if needed
-        self.index.create_index(column)
-        #print("primary key: " + str(key))
-        rid = self.index.locate(column, key)
-        record_set = []
-        for item in rid:
-            #item_I = int.from_bytes(item, byteorder = "big")
-            record_set.append(self.table.return_record(item, key, query_columns))
-        return record_set
+        return self.table.select(key, column, query_columns)
 
     """
     # Update a record with specified key and columns
@@ -57,8 +41,6 @@ class Query:
     """
 
     def update(self, key, *columns):
-        # create index for column if needed
-        self.index.create_index(self.table.key)
         # invalid input
         if len(columns) < 1:
             return
@@ -69,14 +51,8 @@ class Query:
             if x != None:
                 schema_encoding = schema_encoding + bit
             bit = bit // 2
-        #get corresponding rid from key
-        rid = self.index.locate(self.table.key, key)[0]  # since we index by primary key for update, there will only be one corresponding rid in list
         #ridr = int.from_bytes(rid[0], byteorder = "big")
-        self.index.update(rid, self.table.return_record(rid, key, [1, 1, 1, 1, 1]).columns, *columns)
-        self.table.update(rid, schema_encoding, *columns)
-        #for item in rid:
-            #itemr = int.from_bytes(item, byteorder = "big")
-            #self.table.update(item, schema_encoding, record)
+        self.table.update(key, schema_encoding, *columns)
 
     """
     :param start_range: int         # Start of the key range to aggregate
@@ -85,8 +61,6 @@ class Query:
     """
 
     def sum(self, start_range, end_range, aggregate_column_index):
-        # create index for column if needed
-        self.index.create_index(self.table.key)
         sum = 0
         column_agg =[]
         # create a list of 0's and 1 where 1 is in the position of aggregate column
@@ -97,8 +71,8 @@ class Query:
                 column_agg.append(0)
         # sum the values of the aggregate column in specified interval
         for n in range(start_range, (end_range+1)):
-            ridList = self.index.locate(0, n)
-            for cur in ridList:
+            mList = self.table.select(n, 0, column_agg)
+            for cur in mList:
                 #curr = int.from_bytes(cur, byteorder = "big")
-                sum += self.table.return_record(cur, 0, column_agg).columns[aggregate_column_index]
+                sum += cur.columns[aggregate_column_index]
         return sum

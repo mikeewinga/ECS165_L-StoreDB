@@ -79,7 +79,6 @@ class Bufferpool:
         self.cont.acquire()
         orig_page = self.page_map[(table_name, address.pagerange, address.page)]
         orig_page.pin()
-        print(address.pagerange, address.page)
         merge_address = address.copy()
         merge_address.change_flag(2)  # change the base/tail flag to 2, so address refers to merge base page
         merge_page = self.page_map[(table_name, merge_address.pagerange, merge_address.page)]
