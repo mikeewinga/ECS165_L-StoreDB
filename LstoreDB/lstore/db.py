@@ -100,7 +100,6 @@ class Merger:
         while p_ind < page_Range.bOffSet:
             for x in needs:
                 address = Address(page_Range.prid, 0, p_ind+x)
-                print(address.pagerange, address.page)
                 diskManager.merge_replace_page(table, address)
             p_ind = p_ind + step
         while p_ind < page_Range.bOffSet:

@@ -35,9 +35,10 @@ class Table:
         self.num_columns = num_columns
         self.pageranges = {}
         self.control = control
-        self.index = PageDirectory()
         self.diskManager = diskManager
+        self.index = Index(self)
         if (key != None and num_columns != None): # create table from scratch
+            self.index.set_width(self.num_columns)
             self.current_Rid_base = 1
             self.current_Rid_tail = 2 ** 64 - 2
             self.current_Prid = 0
@@ -55,6 +56,7 @@ class Table:
     def set_table_metadata(self, primary_key, num_user_columns, current_base_rid, current_tail_rid, current_prid):
         self.key = primary_key
         self.num_columns = num_user_columns
+        self.index.set_width(self.num_columns)
         self.current_Rid_base = current_base_rid
         self.current_Rid_tail = current_tail_rid
         self.current_Prid = current_prid
@@ -129,18 +131,37 @@ class Table:
         prid = (rid-1)//RANGESIZE
         return Record(rid, key, self.pageranges[prid].return_record(rid, col_wanted))
 
-    def update(self, base_rid, tail_schema, *columns):
+    def select(self, key, column, col_wanted):
         self.control.acquire()
+        self.index.create_index(column)
+        rid = self.index.locate(column, key)
+        record_set = []
+        for item in rid:
+            record_set.append(self.return_record(item, key, col_wanted))
+        self.control.release()
+        return record_set
+
+    def update(self, key, tail_schema, *columns):
+        self.control.acquire()
+        self.index.create_index(self.key)
+        rid = self.index.locate(self.key, key)[0]
+        self.index.update(rid, self.return_record(rid, key, [1, 1, 1, 1, 1]).columns, *columns)
+        
         record = Record(0, self.key, columns)
-        prid = (base_rid-1)//RANGESIZE
-        self.pageranges[prid].update(base_rid, tail_schema, record, self.current_Rid_tail, self.get_timestamp())
+        prid = (rid-1)//RANGESIZE
+        self.pageranges[prid].update(rid, tail_schema, record, self.current_Rid_tail, self.get_timestamp())
         self.current_Rid_tail = self.current_Rid_tail - 1
         self.control.release()
 
-    def delete(self, base_rid):
+    def delete(self, key):
         self.control.acquire()
-        prid = prid = (base_rid-1)//RANGESIZE
-        self.pageranges[prid].delete(base_rid)
+        rid = self.index.locate(self.key, key)[0]
+        columns_wanted = [1] * self.num_columns
+        record = self.return_record(rid, key, columns_wanted)
+        for col_number in range(self.num_columns):
+            self.index.delete(record.columns[col_number], rid, col_number)
+        prid = (rid-1)//RANGESIZE
+        self.pageranges[prid].delete(rid)
         self.control.release()
 
     def close(self):

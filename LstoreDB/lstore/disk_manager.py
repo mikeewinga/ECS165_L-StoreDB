@@ -79,7 +79,6 @@ class Bufferpool:
         self.cont.acquire()
         orig_page = self.page_map[(table_name, address.pagerange, address.page)]
         orig_page.pin()
-        print(address.pagerange, address.page)
         merge_address = address.copy()
         merge_address.change_flag(2)  # change the base/tail flag to 2, so address refers to merge base page
         merge_page = self.page_map[(table_name, merge_address.pagerange, merge_address.page)]
@@ -364,7 +363,7 @@ class DiskManager:
             for line in file:
                 rid, pagerange_num, flag, pagenumber, row = map(int, line.split())
                 address = Address(pagerange_num, flag, pagenumber, row)
-                table.add_pagedir_entry(rid, pagerange_num)
+                #table.add_pagedir_entry(rid, pagerange_num)
                 table.get_page_range(pagerange_num).add_pagedir_entry(rid, address)
 
     # def load_pagedir_from_disk(self, table_name, table_class, pagerange_class, pagerange_metadata):
