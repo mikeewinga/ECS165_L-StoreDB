@@ -1,4 +1,3 @@
-from lstore.table import Table
 
 
 class Query:

@@ -1,10 +1,8 @@
-from lstore.page import Page
-from time import time
-from lstore.index import Index, PageDirectory
+from lstore.index import Index
 from lstore.config import *
 from lstore.pagerange import PageRange
 import datetime
-import copy
+import lstore.globals
 
 class Record:
 
@@ -29,13 +27,11 @@ class Table:
     :param num_columns: int     #Number of Columns: all columns are integer
     :param key: int             #Index of table key in columns
     """
-    def __init__(self, name, diskManager, control, key = None, num_columns = None):
+    def __init__(self, name, key = None, num_columns = None):
         self.name = name
         self.key = key
         self.num_columns = num_columns
         self.pageranges = {}
-        self.control = control
-        self.diskManager = diskManager
         self.index = Index(self)
         if (key != None and num_columns != None): # create table from scratch
             self.index.set_width(self.num_columns)
@@ -45,7 +41,7 @@ class Table:
             self.total_base_phys_pages = num_columns + NUM_METADATA_COLUMNS
             self.total_tail_phys_pages = num_columns + NUM_METADATA_COLUMNS
             # create the first empty page range
-            self.pageranges[0] = PageRange(self.name, 0, self.num_columns, diskManager, True)
+            self.pageranges[0] = PageRange(self.name, 0, self.num_columns, True)
         else:  # table will have to be initialized manually
             self.current_Rid_base = None
             self.current_Rid_tail = None
@@ -68,7 +64,7 @@ class Table:
     """
     def add_page_range(self, prid, prange_metadata):
         is_new_range = False
-        self.pageranges[prid] = PageRange(self.name, prid, self.num_columns, self.diskManager, is_new_range, prange_metadata)
+        self.pageranges[prid] = PageRange(self.name, prid, self.num_columns, is_new_range, prange_metadata)
 
     def add_pagedir_entry(self, rid, prid):
         #delete function
@@ -93,19 +89,19 @@ class Table:
     # update rid -> page range id index
     """
     def insert(self, *columns):
-        self.control.acquire()
+        lstore.globals.control.acquire()
         record = Record(self.current_Rid_base, self.key, columns)
         #handles page range indexing and allocating page ranges
         prid = (self.current_Rid_base-1)//RANGESIZE
         # IF page range id is higher than current max prid -> make new page range
         if prid > self.current_Prid:
             self.current_Prid = prid
-            self.pageranges[prid] = PageRange(self.name, prid, self.num_columns, self.diskManager, True)
+            self.pageranges[prid] = PageRange(self.name, prid, self.num_columns, True)
         #insert record into the pagerange with rid and current time
         self.pageranges[prid].insert(record, self.current_Rid_base, self.get_timestamp())
         # update rid->page range id index
         self.current_Rid_base = self.current_Rid_base + 1
-        self.control.release()
+        lstore.globals.control.release()
 
     """
     Converts the schema bit string to schema bit array
@@ -132,17 +128,17 @@ class Table:
         return Record(rid, key, self.pageranges[prid].return_record(rid, col_wanted))
 
     def select(self, key, column, col_wanted):
-        self.control.acquire()
+        lstore.globals.control.acquire()
         self.index.create_index(column)
         rid = self.index.locate(column, key)
         record_set = []
         for item in rid:
             record_set.append(self.return_record(item, key, col_wanted))
-        self.control.release()
+        lstore.globals.control.release()
         return record_set
 
     def update(self, key, tail_schema, *columns):
-        self.control.acquire()
+        lstore.globals.control.acquire()
         self.index.create_index(self.key)
         rid = self.index.locate(self.key, key)[0]
         self.index.update(rid, self.return_record(rid, key, [1, 1, 1, 1, 1]).columns, *columns)
@@ -151,10 +147,10 @@ class Table:
         prid = (rid-1)//RANGESIZE
         self.pageranges[prid].update(rid, tail_schema, record, self.current_Rid_tail, self.get_timestamp())
         self.current_Rid_tail = self.current_Rid_tail - 1
-        self.control.release()
+        lstore.globals.control.release()
 
     def delete(self, key):
-        self.control.acquire()
+        lstore.globals.control.acquire()
         rid = self.index.locate(self.key, key)[0]
         columns_wanted = [1] * self.num_columns
         record = self.return_record(rid, key, columns_wanted)
@@ -162,7 +158,7 @@ class Table:
             self.index.delete(record.columns[col_number], rid, col_number)
         prid = (rid-1)//RANGESIZE
         self.pageranges[prid].delete(rid)
-        self.control.release()
+        lstore.globals.control.release()
 
     def close(self):
         overall_page_directory = {}
@@ -173,10 +169,10 @@ class Table:
             page_range_metadata[prid] = (self.pageranges[prid].bOffSet, self.pageranges[prid].tOffSet, self.pageranges[prid].cur_tid, self.pageranges[prid].mOffSet, self.pageranges[prid].merge_f)
 
         # flush table and page range metadata into table index file
-        self.diskManager.flush_table_metadata(self.name, self.current_Rid_base, self.current_Rid_tail, self.current_Prid)
-        self.diskManager.flush_pagerange_metadata(self.name, page_range_metadata)
-        self.diskManager.flush_index(self.name, self.current_Rid_base, self.current_Rid_tail, self.current_Prid)
+        lstore.globals.diskManager.flush_table_metadata(self.name, self.current_Rid_base, self.current_Rid_tail, self.current_Prid)
+        lstore.globals.diskManager.flush_pagerange_metadata(self.name, page_range_metadata)
+        lstore.globals.diskManager.flush_index(self.name, self.current_Rid_base, self.current_Rid_tail, self.current_Prid)
 
         # flush page ranges' page directories into page directory file
-        self.diskManager.flush_page_directory(self.name, overall_page_directory)
+        lstore.globals.diskManager.flush_page_directory(self.name, overall_page_directory)
 

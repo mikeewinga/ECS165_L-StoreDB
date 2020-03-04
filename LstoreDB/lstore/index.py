@@ -1,7 +1,6 @@
-import lstore.table
-import math
 from lstore.config import *
-
+from lstore.address import Address
+import lstore.globals
 """
 # optional: Indexes the specified column of the specified table to speed up select queries
 # This data structure is usually a B-Tree
@@ -11,7 +10,6 @@ class Index:
 
     def __init__(self, table):
         self.table = table
-        self.diskManager = table.diskManager
         #self.indexDict = [{}]*table.num_columns
         self.indexDict = []
             
@@ -76,11 +74,11 @@ class Index:
         for i in range(0, numIndexPages+1):  # for all page ranges in table
             for j in range(0,self.table.pageranges[i].bOffSet+RID_COLUMN,step):  # for all base physical RID pages in range
                 rid_page_address = Address(i, 0, RID_COLUMN+j)
-                num_records = self.diskManager.page_num_records(self.table.name, rid_page_address)
+                num_records = lstore.globals.diskManager.page_num_records(self.table.name, rid_page_address)
                 for x in range(1, num_records):  # for all record slots in RID page starting from 1 (skip 0 because that's the TPS)
                     rid_page_address.row = x
                     # read the rid number from page and convert from bytes to int
-                    rid = int.from_bytes(self.diskManager.read(self.table.name, rid_page_address), byteorder='big',signed=False)
+                    rid = int.from_bytes(lstore.globals.diskManager.read(self.table.name, rid_page_address), byteorder='big',signed=False)
                     if rid == 0:
                         continue
                     key = self.table.return_record(rid, 0, query_columns).columns[column_number]
@@ -140,25 +138,3 @@ class PageDirectory:
             del self.indexDict[RID]
             return 1
         return 0
-
-class Address:
-    #Base/Tail flag, Page-range number, Page number, Row number
-    def __init__(self, pagerange, flag, pagenumber, row = None):
-        self.pagerange = pagerange
-        self.flag = flag  # values: 0--base, 1--tail, 2--base page copy used for merge
-        self.pagenumber = pagenumber
-        self.page = (flag, pagenumber)
-        self.row = row
-
-    def __add__(self, offset):
-        #ret = (self.page[0],self.page[1]+offset)
-        #return ret
-        new_page_num = self.page[1] + offset
-        return Address(self.pagerange, self.flag, new_page_num, self.row)
-
-    def copy(self):
-        return Address(self.pagerange, self.flag, self.pagenumber, self.row)
-
-    def change_flag(self, flag):
-        self.flag = flag
-        self.page = (flag, self.pagenumber)

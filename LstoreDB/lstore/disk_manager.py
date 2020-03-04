@@ -1,6 +1,5 @@
+from lstore.address import Address
 from lstore.page import Page
-from lstore.index import Address
-from lstore.pagerange import PageRange
 from lstore.table import *
 from lstore.config import *
 from collections import OrderedDict
@@ -365,19 +364,6 @@ class DiskManager:
                 address = Address(pagerange_num, flag, pagenumber, row)
                 #table.add_pagedir_entry(rid, pagerange_num)
                 table.get_page_range(pagerange_num).add_pagedir_entry(rid, address)
-
-    # def load_pagedir_from_disk(self, table_name, table_class, pagerange_class, pagerange_metadata):
-    #     dir_file = self.directory_path + table_name + PAGE_DIR_EXTENSION
-    #     pagerange_class[0].bOffSet = pagerange_metadata[0][BOFFSET]
-    #     pagerange_class[0].tOffSet = pagerange_metadata[0][TOFFSET]
-    #     with open(dir_file, "r") as file:
-    #         for line in file:
-    #             rid, pagerange, flag, pagenumber, row = map(int, line.split())
-    #             table_class.index.write(rid, pagerange)
-    #             # if there is more than one page range, allocate more pageranges
-    #             if(len(pagerange_class) <= pagerange ):
-    #                 pagerange_class[pagerange] = PageRange(table_class.name, pagerange, table_class.current_Rid_base, table_class.num_columns, table_class.diskManager, pagerange_metadata[pagerange][BOFFSET], pagerange_metadata[pagerange][TOFFSET])
-    #             pagerange_class[pagerange].index.write(rid, Address(pagerange, flag, pagenumber, row))
 
 
     """
