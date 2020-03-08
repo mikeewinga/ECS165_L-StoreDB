@@ -1,4 +1,4 @@
-
+from lstore.config import *
 
 class Query:
     """
@@ -12,7 +12,7 @@ class Query:
     """
     Deletes key from database and index
     """
-    def delete(self, primary_key):
+    def delete(self, primary_key, action = COMMIT_ACTION):
         self.table.delete(primary_key)
 
     """
@@ -20,7 +20,7 @@ class Query:
     :param columns: variadic parameters of column values in a record
     """
 
-    def insert(self, *columns):
+    def insert(self, *columns, action = COMMIT_ACTION):
         #package information into records and pass records to table
         self.table.insert(*columns)
 
@@ -31,7 +31,7 @@ class Query:
     :return: list of selected records
     """
 
-    def select(self, key, column, query_columns):
+    def select(self, key, column, query_columns, action = COMMIT_ACTION):
         return self.table.select(key, column, query_columns)
 
     """
@@ -40,7 +40,7 @@ class Query:
         [None, None, 4, None] specifies to update 3rd column with new value
     """
 
-    def update(self, key, *columns):
+    def update(self, key, *columns, action = COMMIT_ACTION):
         # invalid input
         if len(columns) < 1:
             return
@@ -60,7 +60,7 @@ class Query:
     :param aggregate_columns: int  # Index of desired column to aggregate
     """
 
-    def sum(self, start_range, end_range, aggregate_column_index):
+    def sum(self, start_range, end_range, aggregate_column_index, action = COMMIT_ACTION):
         sum = 0
         column_agg =[]
         # create a list of 0's and 1 where 1 is in the position of aggregate column
