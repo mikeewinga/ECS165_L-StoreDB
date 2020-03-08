@@ -9,6 +9,7 @@ class Transaction:
     """
     def __init__(self):
         self.queries = []
+        self.lockedQueries = [] # store the queries with acquired locks
         pass
 
     """
@@ -32,12 +33,17 @@ class Transaction:
             # If the query has failed to take the locks the transaction should abort
             if result == False:
                 return self.abort()
+            else: # store all the queries with acquired locks
+                self.lockedQueries.append((query,args))
         return self.commit()
 
     def abort(self):
         #ask database/lock manager to release the locks taken so far
         #TODO: do roll-back and any other necessary operations
         # release the locks
+        for query, args in self.lockedQueries:
+            query(*args, action = RELEASE_LOCK)
+            
         return False
 
     def commit(self):
