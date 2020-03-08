@@ -28,7 +28,7 @@ class Merger:
 
     def merge(self,table, page_Range):
         lstore.globals.control.acquire()
-        print("merging", page_Range.prid, page_Range.tOffSet)
+        #print("merging", page_Range.prid, page_Range.tOffSet)
         #acquire all required resources that are time critical
         #clear delete_queue
         page_Range.delete_queue = []
