@@ -6,6 +6,7 @@ class Query:
     """
 
     def __init__(self, table):
+        # some sort of flgs 
         self.table = table
 
     """
