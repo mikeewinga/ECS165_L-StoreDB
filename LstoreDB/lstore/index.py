@@ -15,7 +15,7 @@ class Index:
             
     def set_width(self, num_columns):
         self.hasIndex = [0]*num_columns
-        print(num_columns)
+        #print(num_columns)
         for i in range(num_columns):
             self.indexDict.append({})  # each dictionary maps {key value : list of RID's}
 

@@ -31,52 +31,43 @@ class Bufferpool:
     -then goes to the record offset and reads it
     """
     def read(self, table_name, address):
-        #lstore.globals.cont.acquire()
         self.pin_page(table_name, address)  # note that this would be critical section in multithreading
         page = self.page_map[(table_name, address.pagerange, address.page)]
         self.page_map.move_to_end((table_name, address.pagerange, address.page))
         read_value = page.read(address.row)
         self.unpin_page(table_name, address)
-        #lstore.globals.cont.release()
         return read_value
 
     def append_write(self, table_name, address, value):
-        #lstore.globals.cont.acquire()
         self.pin_page(table_name, address)  # note that this would be critical section in multithreading
         page = self.page_map[(table_name, address.pagerange, address.page)]
         page.write(value)
         page.dirty = True
         self.page_map.move_to_end((table_name, address.pagerange, address.page))
         self.unpin_page(table_name, address)
-        #lstore.globals.cont.release()
 
     def overwrite(self, table_name, address, value):
-        #lstore.globals.cont.acquire()
         self.pin_page(table_name, address)  # note that this would be critical section in multithreading
         page = self.page_map[(table_name, address.pagerange, address.page)]
         page.overwrite_record(address.row, value)
         page.dirty = True
         self.page_map.move_to_end((table_name, address.pagerange, address.page))
         self.unpin_page(table_name, address)
-        #lstore.globals.cont.release()
 
     """
     param address: the Address object of the original base page to copy (flag = 0)
     """
     def merge_copy_page(self, table_name, address):
-        #lstore.globals.cont.acquire()
         page = self.page_map[(table_name, address.pagerange, address.page)]
         new_page = page.copy()
         new_page.unpin()
         # change the base/tail flag to 2, so address refers to merge base page
         self.page_map[(table_name, address.pagerange, (2, address.pagenumber))] = new_page
-        #lstore.globals.cont.release()
 
     """
     param address: the original base page (flag = 0)
     """
     def merge_replace_page(self, table_name, address):
-        #lstore.globals.cont.acquire()
         orig_page = self.page_map[(table_name, address.pagerange, address.page)]
         orig_page.pin()
         merge_address = address.copy()
@@ -90,23 +81,19 @@ class Bufferpool:
         del self.page_map[(table_name, address.pagerange, address.page)]
         # replace the Page() for original page address with the merge_page
         self.page_map[(table_name, address.pagerange, address.page)] = merge_page
-        #lstore.globals.cont.release()
 
     def page_has_capacity(self, table_name, address):
         return self.page_map[(table_name, address.pagerange, address.page)].has_capacity()
 
     def delete(self, table_name, address):
-        #lstore.globals.cont.acquire()
         page = self.page_map[(table_name, address.pagerange, address.page)]
         del self.page_map[(table_name, address.pagerange, address.page)]
-        #lstore.globals.cont.release()
         return page
 
     """
     Delete the LRU page
     """
     def evict(self):
-        #lstore.globals.cont.acquire()
         # popItem pops and returns (key, value) in FIFO order with False arg
         address_to_page = self.page_map.popitem(False)
         table_name = address_to_page[0][0]
@@ -115,16 +102,12 @@ class Bufferpool:
         page = address_to_page[1]
         if (page.pin_count > 0):  # page is in use
             self.page_map[(table_name, page_range_num, page_num)] = page  # re-add the page back into dictionary
-            #lstore.globals.cont.release()
             return ()
         else:
-            #lstore.globals.cont.release()
             return address_to_page
 
     def add_page(self, table_name, address, page):
-        #lstore.globals.cont.acquire()
         self.page_map[(table_name, address.pagerange, address.page)] = page
-        #lstore.globals.cont.release()
         # self.page_map.move_to_end((table_name, address.pagerange, address.page))
 
     def pin_page(self, table_name, address):
@@ -144,16 +127,21 @@ class DiskManager:
         self.active_table_metadata = {}  # { string table_name: (int primary key index, int num_user_columns, current_rid_base, current_rid_tail, current_prid, {prid : (bOffset, tOffset, cur_tid, mOffset, merge_f)} }
 
     def set_directory_path(self, directory_path):
+        lstore.globals.access.acquire()
         self.directory_path = directory_path + "/"
         try:
             os.makedirs(directory_path)
         except OSError:
             if(os.path.exists(directory_path)):
+                lstore.globals.access.release()
                 return
             else:
-                print("Creation of the directory %s failed" % directory_path)
+                #print("Creation of the directory %s failed" % directory_path)
+                pass
         else:
-            print("Successfully created the directory %s " % directory_path)
+            #print("Successfully created the directory %s " % directory_path)
+            pass
+        lstore.globals.access.release()
 
     """
     :param primary_key: index of primary user column
@@ -192,7 +180,7 @@ class DiskManager:
         return table
 
     def new_page(self, table_name, address, column_index):
-        #lstore.globals.access.acquire()
+        lstore.globals.access.acquire()
         filename = self.directory_path + table_name + BIN_EXTENSION  # file for table data
         orig_filesize = os.path.getsize(filename)
         total_columns = int(self.active_table_metadata[table_name][COLUMNS]) + NUM_METADATA_COLUMNS
@@ -233,7 +221,7 @@ class DiskManager:
                     self.flush_page(evict_page)
             in_memory_pg = Page()
             self.bufferpool.add_page(table_name, address, in_memory_pg)
-        #lstore.globals.access.release()
+        lstore.globals.access.release()
         return file_offset
 
     """
@@ -266,7 +254,7 @@ class DiskManager:
     param address: the original base page (flag = 0)
     """
     def merge_replace_page(self, table_name, address):
-        #lstore.globals.access.acquire()
+        lstore.globals.access.acquire()
         if (not self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
         self.bufferpool.merge_replace_page(table_name, address)
@@ -279,48 +267,48 @@ class DiskManager:
         table_index[(address.pagerange, address.page)][FILE_OFFSET] = new_file_offset
         # delete merge page address entry from table_index
         del table_index[(merge_address.pagerange, merge_address.page)]
-        #lstore.globals.access.release()
+        lstore.globals.access.release()
 
     def delete_page(self, table_name, base_tail, page_num):
         pass
 
     def read(self, table_name, address):
-        #lstore.globals.access.acquire()
+        lstore.globals.access.acquire()
         if (not self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
         ret = self.bufferpool.read(table_name, address)
-        #lstore.globals.access.release()
+        lstore.globals.access.release()
         return copy.copy(ret)
 
     def append_write(self, table_name, address, value):
-        #lstore.globals.access.acquire()
+        lstore.globals.access.acquire()
         if (not self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
         self.bufferpool.append_write(table_name, address, value)
         table_index = self.active_table_indexes[table_name]
         table_index[(address.pagerange, address.page)][NUM_RECORDS] += 1
-        #lstore.globals.access.release()
+        lstore.globals.access.release()
 
     def overwrite(self, table_name, address, value):
-        #lstore.globals.access.acquire()
+        lstore.globals.access.acquire()
         if (not self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
         self.bufferpool.overwrite(table_name, address, value)
-        #lstore.globals.access.release()
+        lstore.globals.access.release()
 
     def page_has_capacity(self, table_name, address):
-        #lstore.globals.access.acquire()
+        lstore.globals.access.acquire()
         if (not self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
         ret = self.bufferpool.page_has_capacity(table_name, address)
-        #lstore.globals.access.release()
+        lstore.globals.access.release()
         return ret
 
     def page_num_records(self, table_name, address):
-        #lstore.globals.access.acquire()
+        lstore.globals.access.acquire()
         table_index = self.active_table_indexes[table_name]
         num_records = table_index[(address.pagerange, address.page)][NUM_RECORDS]
-        #lstore.globals.access.release()
+        lstore.globals.access.release()
         return num_records
 
     """
@@ -328,7 +316,6 @@ class DiskManager:
     and copying needed page into the buffer pool
     """
     def load_page_from_disk(self, table_name, address):
-        #lstore.globals.access.acquire()
         if (self.bufferpool.is_full()):
             # evict page and flush it to disk if dirty
             evict_page = self.bufferpool.evict()
@@ -350,10 +337,9 @@ class DiskManager:
             page_copy = Page(page_bytes, num_records)
             #page_copy = Page(page_bytes)
             self.bufferpool.add_page(table_name, address, page_copy)
-        #lstore.globals.access.release()
+
 
     def load_index_from_disk(self, table_name):
-        #lstore.globals.access.acquire()
         index_filename = self.directory_path + table_name + INDEX_EXTENSION
         self.active_table_indexes[table_name] = {}
         with open(index_filename, "r") as file:
@@ -371,10 +357,8 @@ class DiskManager:
                 page_range_num, base_tail, page_num, file_offset, num_records = map(int, line.split())
                 address_tuple = (page_range_num, (base_tail, page_num))
                 self.active_table_indexes[table_name][address_tuple] = [file_offset, num_records]
-            #lstore.globals.access.release()
 
     def load_pagedir_from_disk(self, table_name, table):
-        #lstore.globals.access.acquire()
         # call on table to create new page ranges and set each range's metadata
         table_metadata = self.active_table_metadata[table_name]
         num_page_ranges = table_metadata[PRID] + 1
@@ -389,14 +373,13 @@ class DiskManager:
                 address = Address(pagerange_num, flag, pagenumber, row)
                 #table.add_pagedir_entry(rid, pagerange_num)
                 table.get_page_range(pagerange_num).add_pagedir_entry(rid, address)
-        #lstore.globals.access.release()
 
 
     """
     :param evict_page: key-value pair { (string table_name, int page_range, (int base/tail, int page_num)) : Page() }
     """
     def flush_page(self, evict_page):
-        #lstore.globals.access.acquire()
+        lstore.globals.access.acquire()
         table_name = evict_page[0][0]
         page_range_num = evict_page[0][1]
         page_num = evict_page[0][2]
@@ -408,10 +391,10 @@ class DiskManager:
         with open(filename, "r+b") as file:  # open file for writing without wiping the file contents
             file.seek(file_offset)
             file.write(page.data)
-        #lstore.globals.access.release()
+        lstore.globals.access.release()
 
     def flush_table_metadata(self, table_name, current_rid_base, current_rid_tail, cur_prid):
-        #lstore.globals.access.acquire()
+        lstore.globals.access.acquire()
         table_metadata = self.active_table_metadata[table_name]
         filename = self.directory_path + table_name + INDEX_EXTENSION # file for table index
         with open(filename, "w") as file:  # open file and wipe the contents, then rewrite everything
@@ -422,13 +405,13 @@ class DiskManager:
                             + str(current_rid_tail) + " " \
                             + str(cur_prid) + "\n"
             file.write(metadata_line)
-        #lstore.globals.access.release()
+        lstore.globals.access.release()
 
     """
     :param metadata_dict: { int prid : (int bOffset, int tOffset, int cur_tid, int mOffset, int merge_f) }
     """
     def flush_pagerange_metadata(self, table_name, metadata_dict):
-        #lstore.globals.access.acquire()
+        lstore.globals.access.acquire()
         filename = self.directory_path + table_name + INDEX_EXTENSION # file for table index
         with open(filename, "a") as file:
             for prid in metadata_dict:
@@ -439,13 +422,13 @@ class DiskManager:
                                   + str(metadata_dict[prid][MOFFSET]) + " " \
                                   + str(metadata_dict[prid][MERGE_F]) + "\n"
                 file.write(page_range_line)
-        #lstore.globals.access.release()
+        lstore.globals.access.release()
 
     """
     note that this function doesn't delete the entry from dictionary, just flushes it to disk
     """
     def flush_index(self, table_name, current_rid_base, current_rid_tail, cur_prid):
-        #lstore.globals.access.acquire()
+        lstore.globals.access.acquire()
         table_index = self.active_table_indexes[table_name]
         filename = self.directory_path + table_name + INDEX_EXTENSION # file for table index
         with open(filename, "a") as file:  # open file and append
@@ -458,10 +441,10 @@ class DiskManager:
                              + str(table_index[address_tuple][NUM_RECORDS]) + "\n"
                 file.write(index_line)
         # del self.active_table_indexes[table_name]
-        #lstore.globals.access.release()
+        lstore.globals.access.release()
 
     def flush_page_directory(self, table_name, pagedir_dict):
-        #lstore.globals.access.acquire()
+        lstore.globals.access.acquire()
         filename = self.directory_path + table_name + PAGE_DIR_EXTENSION # file for page directory
         with open(filename, "w") as file:
             for rid, address in pagedir_dict.items():
@@ -471,7 +454,7 @@ class DiskManager:
                              + str(address.pagenumber) + " " \
                              + str(address.row) + "\n"
                 file.write(dir_line)
-        #lstore.globals.access.release()
+        lstore.globals.access.release()
 
     def close(self):
         # empty the bufferpool
@@ -484,3 +467,4 @@ class DiskManager:
         # for table_name in self.active_table_indexes.keys():
         #     self.flush_index_metadata(table_name)
         self.active_table_indexes.clear()
+
