@@ -28,7 +28,7 @@ class Transaction:
     # locking we have
     def run(self):
         for query, args in self.queries:
-            result = query(*args, ACQUIRE_LOCK)
+            result = query(*args, action = ACQUIRE_LOCK)
             # If the query has failed to take the locks the transaction should abort
             if result == False:
                 return self.abort()
@@ -41,10 +41,12 @@ class Transaction:
         return False
 
     def commit(self):
-        #actually call the query function to do whatever
-        #then release all locks
-        # TODO: commit to database
-        # release after commits
+        # call the query functions to commit
+        for query, args in self.queries:
+            query(*args, action = COMMIT_ACTION)
+        # release all the locks at once
+        for query, args in self.queries:
+            query(*args, action = RELEASE_LOCK)
         return True
 
 
