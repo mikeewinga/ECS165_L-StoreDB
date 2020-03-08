@@ -21,7 +21,11 @@ class Transaction:
     def add_query(self, query, *args):
         self.queries.append((query, args))
 
-    # If you choose to implement this differently this method must still return True if transaction commits or False on abort
+    # If you choose to implement this differently this method must still 
+    # return True if transaction commits or False on abort
+
+    # For this function, we need to decide if the transaction succeeds by the 
+    # locking we have
     def run(self):
         for query, args in self.queries:
             result = query(*args, ACQUIRE_LOCK)
@@ -33,11 +37,16 @@ class Transaction:
     def abort(self):
         #ask database/lock manager to release the locks taken so far
         #TODO: do roll-back and any other necessary operations
+        # release the locks
         return False
 
     def commit(self):
         #actually call the query function to do whatever
         #then release all locks
         # TODO: commit to database
+        # release after commits
         return True
+
+
+
 
