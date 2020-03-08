@@ -42,16 +42,16 @@ class Merger:
         needs = [3]
         for i in range(0, page_Range.num_columns):
             needs.append(i+NUM_METADATA_COLUMNS)
-        while p_ind < page_Range.bOffSet:
+        while p_ind < page_Range.bOffSet+1:
             for i in range(page_Range.num_columns+NUM_METADATA_COLUMNS):#needs:
-                b_pages[i+p_ind] = lstore.globals.diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind+i), i)
+                b_pages[i+p_ind] = copy.deepcopy(lstore.globals.diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind+i), i))
             p_ind = p_ind + step
         page_Range.merge_helper()
         page_Range.mOffSet = copy.deepcopy(page_Range.tOffSet)
         #lstore.globals.control.release()
 
 
-        address = mindex.read(tid)
+        address = mindex.read(tid).copy()
         t_page = address.pagenumber
         t_row = address.row
 
@@ -85,23 +85,32 @@ class Merger:
                 lstore.globals.diskManager.overwrite(table, baddress+SCHEMA_ENCODING_COLUMN, resultingBaseSchema)
 
             t_row = 511
-        p_ind = 0
+
         #lstore.globals.control.acquire()
+        p_ind = 0
+        """
         #handle delete queue
         for rid in page_Range.delete_queue:
             address = mindex.read(rid).copy()
             address.change_flag(2)
             lstore.globals.diskManager.overwrite(table, address+RID_COLUMN, 0)
+        """
         #swap pages
-        while p_ind < page_Range.bOffSet:
+        while p_ind < page_Range.bOffSet+1:
             for x in needs:
-                address = Address(page_Range.prid, 0, p_ind+x)
-                lstore.globals.diskManager.merge_replace_page(table, address)
+                for i in range(512):
+                    address = Address(page_Range.prid, 0, p_ind+x, i)
+                    taddress = Address(page_Range.prid, 2, p_ind+x, i)
+                    val = lstore.globals.diskManager.read(table, taddress)
+                    lstore.globals.diskManager.overwrite(table, address, val)
+                #lstore.globals.diskManager.merge_replace_page(table, address)
             p_ind = p_ind + step
+        """
         while p_ind < page_Range.bOffSet:
             for i in range(page_Range.num_columns+NUM_METADATA_COLUMNS):
                 lstore.globals.diskManager.overwrite(table, Address(page_Range.prid, 0, i+p_ind,0), tid)
             p_ind = p_ind + step
+        """
         page_Range.tps = tid
         lstore.globals.control.release()
 
