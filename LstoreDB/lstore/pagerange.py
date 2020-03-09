@@ -200,3 +200,8 @@ class PageRange:
 
     def get_pagedir_dict(self):
         return self.index.indexDict
+
+    def acquire_lock(self, rid):
+        #FIXME
+        global lockManager
+        return lockManager.getLock()

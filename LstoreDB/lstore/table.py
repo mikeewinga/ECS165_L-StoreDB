@@ -137,6 +137,16 @@ class Table:
         lstore.globals.control.release()
         return record_set
 
+    def select_acquire_lock(self, key, column):
+        self.index.create_index(column)
+        ridList = self.index.locate(column, key)
+        for rid in ridList:
+            prid = (rid - 1) // RANGESIZE
+            got_lock = self.pageranges[prid].acquire_lock(rid)
+            if (not got_lock):
+                return False
+        return True
+
     def update(self, key, tail_schema, *columns):
         lstore.globals.control.acquire()
         self.index.create_index(self.key)
@@ -149,6 +159,12 @@ class Table:
         self.current_Rid_tail = self.current_Rid_tail - 1
         lstore.globals.control.release()
 
+    def update_acquire_lock(self, key):
+        self.index.create_index(self.key)
+        rid = self.index.locate(self.key, key)[0]
+        prid = (rid - 1) // RANGESIZE
+        return self.pageranges[prid].acquire_lock(rid)
+
     def delete(self, key):
         lstore.globals.control.acquire()
         rid = self.index.locate(self.key, key)[0]
@@ -159,6 +175,11 @@ class Table:
         prid = (rid-1)//RANGESIZE
         self.pageranges[prid].delete(rid)
         lstore.globals.control.release()
+
+    def delete_acquire_lock(self, key):
+        rid = self.index.locate(self.key, key)[0]
+        prid = (rid - 1) // RANGESIZE
+        return self.pageranges[prid].acquire_lock(rid)
 
     def close(self):
         overall_page_directory = {}
