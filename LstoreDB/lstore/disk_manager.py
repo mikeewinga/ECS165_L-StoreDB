@@ -136,13 +136,11 @@ class DiskManager:
         self.active_table_metadata = {}  # { string table_name: (int primary key index, int num_user_columns, current_rid_base, current_rid_tail, current_prid, {prid : (bOffset, tOffset, cur_tid, mOffset, merge_f)} }
 
     def set_directory_path(self, directory_path):
-        lstore.globals.access.acquire()
         self.directory_path = directory_path + "/"
         try:
             os.makedirs(directory_path)
         except OSError:
             if(os.path.exists(directory_path)):
-                lstore.globals.access.release()
                 return
             else:
                 #print("Creation of the directory %s failed" % directory_path)
@@ -150,7 +148,6 @@ class DiskManager:
         else:
             #print("Successfully created the directory %s " % directory_path)
             pass
-        lstore.globals.access.release()
 
     """
     :param primary_key: index of primary user column
