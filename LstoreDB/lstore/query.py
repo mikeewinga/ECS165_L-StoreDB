@@ -13,7 +13,8 @@ class Query:
     Deletes key from database and index
     """
     def delete(self, primary_key, action = COMMIT_ACTION):
-        self.table.delete(primary_key)
+        if (action == COMMIT_ACTION):
+            self.table.delete(primary_key)
 
     """
     # Insert a record with specified columns
@@ -21,8 +22,9 @@ class Query:
     """
 
     def insert(self, *columns, action = COMMIT_ACTION):
-        #package information into records and pass records to table
-        self.table.insert(*columns)
+        if (action == COMMIT_ACTION):
+            #package information into records and pass records to table
+            self.table.insert(*columns)
 
     """
     # Read columns from a record with specified key
@@ -32,7 +34,8 @@ class Query:
     """
 
     def select(self, key, column, query_columns, action = COMMIT_ACTION):
-        return self.table.select(key, column, query_columns)
+        if (action == COMMIT_ACTION):
+            return self.table.select(key, column, query_columns)
 
     """
     # Update a record with specified key and columns
@@ -41,18 +44,19 @@ class Query:
     """
 
     def update(self, key, *columns, action = COMMIT_ACTION):
-        # invalid input
-        if len(columns) < 1:
-            return
-        # create bitmap for schema encoding with 1 in the position of updated column
-        bit = 2 ** (len(columns)-1)
-        schema_encoding = 0
-        for x in columns:
-            if x != None:
-                schema_encoding = schema_encoding + bit
-            bit = bit // 2
-        #ridr = int.from_bytes(rid[0], byteorder = "big")
-        self.table.update(key, schema_encoding, *columns)
+        if (action == COMMIT_ACTION):
+            # invalid input
+            if len(columns) < 1:
+                return
+            # create bitmap for schema encoding with 1 in the position of updated column
+            bit = 2 ** (len(columns)-1)
+            schema_encoding = 0
+            for x in columns:
+                if x != None:
+                    schema_encoding = schema_encoding + bit
+                bit = bit // 2
+            #ridr = int.from_bytes(rid[0], byteorder = "big")
+            self.table.update(key, schema_encoding, *columns)
 
     """
     :param start_range: int         # Start of the key range to aggregate
@@ -61,18 +65,19 @@ class Query:
     """
 
     def sum(self, start_range, end_range, aggregate_column_index, action = COMMIT_ACTION):
-        sum = 0
-        column_agg =[]
-        # create a list of 0's and 1 where 1 is in the position of aggregate column
-        for x in range(0,self.table.num_columns):
-            if(x == aggregate_column_index):
-                column_agg.append(1)
-            else:
-                column_agg.append(0)
-        # sum the values of the aggregate column in specified interval
-        for n in range(start_range, (end_range+1)):
-            mList = self.table.select(n, 0, column_agg)
-            for cur in mList:
-                #curr = int.from_bytes(cur, byteorder = "big")
-                sum += cur.columns[aggregate_column_index]
-        return sum
+        if (action == COMMIT_ACTION):
+            sum = 0
+            column_agg =[]
+            # create a list of 0's and 1 where 1 is in the position of aggregate column
+            for x in range(0,self.table.num_columns):
+                if(x == aggregate_column_index):
+                    column_agg.append(1)
+                else:
+                    column_agg.append(0)
+            # sum the values of the aggregate column in specified interval
+            for n in range(start_range, (end_range+1)):
+                mList = self.table.select(n, 0, column_agg)
+                for cur in mList:
+                    #curr = int.from_bytes(cur, byteorder = "big")
+                    sum += cur.columns[aggregate_column_index]
+            return sum
