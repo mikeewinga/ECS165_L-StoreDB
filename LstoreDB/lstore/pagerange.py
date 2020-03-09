@@ -201,7 +201,8 @@ class PageRange:
     def get_pagedir_dict(self):
         return self.index.indexDict
 
-    def acquire_lock(self, rid):
-        #FIXME
+    def acquire_lock(self, rid, actionName):
+        #FIXME =)
         global lockManager
-        return lockManager.getLock()
+        return lockManager.getLock(self.table_name, self.index.read(rid), actionName)
+        # table name, address object, function name (String)
