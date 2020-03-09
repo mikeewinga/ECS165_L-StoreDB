@@ -205,4 +205,7 @@ class PageRange:
         #FIXME =)
         global lockManager
         return lockManager.getLock(self.table_name, self.index.read(rid), actionName)
-        # table name, address object, function name (String)
+
+    def release_lock(self, rid, actionName):
+        global lockManager
+        return lockManager.releaseLock(self.table_name, self.index.read(rid), actionName)
