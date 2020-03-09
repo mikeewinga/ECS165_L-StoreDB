@@ -37,5 +37,17 @@ INDEX_EXTENSION = "_index.txt"
 PAGE_DIR_EXTENSION = "_pageDir.txt"
 COLUMN_BLOCK_BYTES = PAGESIZE * COLUMN_BLOCK_PAGES
 
+#lock types
+IS = 1
+IX = 2
+S  = 3 
+X  = 4
+
+#lock levels
+TABLE       = 0
+PAGERANGE   = 1 
+PAGE        = 2
+ROW      = 3
+
 def init():
     pass
