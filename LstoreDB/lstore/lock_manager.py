@@ -17,9 +17,6 @@ class LockManager:
             pass #TODO stuff
         else:
             self.locks[thread_id] = {} #insert into locks
-        
-
-
 
 
         #check if thread already has needed lock
@@ -79,26 +76,26 @@ class lockTree:
     """
     
     def __init__(self):
-        self.root = lockNode(None, root)
+        self.root = lockNode(None, "root")
 
     def traverse(self, node, path, opperation, lock_change):
         if(len(path) == 0):
-            if(opperation == 'add'):
+            if(opperation == "add"):
                 if(node.compare_locks(lock_change)):
                     node.add_lock(lock_change)
                     return 1
                 else:
                     return 0
-            if(opperation == 'remove'):
+            if(opperation == "remove"):
                 node.remove_lock(lock_change)
         try:
             node.child[path[0]]
         except:
             new_node = lockNode(node, path.pop(0))
             node.child[new_node.nodeID] = new_node
-            traverse(new_node, path, lock_change)
+            traverse(new_node, path, opperation, lock_change)
         else:
-            traverse(node.child[path.pop(0)], path, lock_change)
+            traverse(node.child[path.pop(0)], path, opperation, lock_change)
 
     def change_lock(self, path, opperation, lock_change):
         try:
@@ -106,6 +103,49 @@ class lockTree:
         except:
             new_node = lockNode(self.root, path.pop(0))
             self.root.child[new_node.nodeID] = new_node
-            traverse(new_node, path, lock_change )
+            traverse(new_node, path, opperation, lock_change)
         else:
-            traverse(self.root.child[path.pop(0)], path, lock_change)
+            traverse(self.root.child[path.pop(0)], path, opperation, lock_change)
+
+    def debug_traverse(self, node):
+        print("nodeID: ", node.nodeID)
+        print("parent: ", node.parent)
+        print("locks: ", node.locks)
+        for key in node.child:
+            try:
+                node.child[key]
+            except:
+                print("END OF TREE")
+                return
+            else:
+                debug_traverse(node.child[key])
+        print("END OF TREE")
+
+    def debug_print(self):
+        print("root")
+        for key in self.root.child:
+            try:
+                self.root.child[key]
+            except:
+                print("END OF TREE")
+                return  
+            else:
+                debug_traverse(self.root.child[key])
+        print("END OF TREE")
+
+
+
+tree = lockTree()
+tree.debug_print()
+path1 = ["Grades", 1, 58, 275]
+path2 = ["Grades", 0, 68, 175]
+path3 = ["Grades", 0, 68, 177]
+path2 = ["Grades", 1, 55, 275]
+add = "add"
+remove= "remove"
+tree.change_lock(path1, add, 3)
+tree.change_lock(path2, add, 1)
+tree.change_lock(path1, add, 3)
+#tree.change_lock(path1, add, 2)
+tree.debug_print()
+
