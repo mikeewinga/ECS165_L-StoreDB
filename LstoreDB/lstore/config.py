@@ -44,10 +44,11 @@ S  = 3
 X  = 4
 
 #lock levels
-TABLE       = 0
-PAGERANGE   = 1 
-PAGE        = 2
-ROW      = 3
+DATABASE    = 0
+TABLE       = 1
+PAGERANGE   = 2 
+PAGE        = 3
+ROW         = 4
 
 def init():
     pass
