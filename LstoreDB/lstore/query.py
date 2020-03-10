@@ -15,8 +15,8 @@ class Query:
     def delete(self, primary_key, action = COMMIT_ACTION):
         if (action == COMMIT_ACTION):
             self.table.delete(primary_key)
-        elif (action == ACQUIRE_LOCK):
-            self.table.delete_acquire_lock(primary_key)
+        else:
+            self.table.delete_lock(primary_key, action)
 
     """
     # Insert a record with specified columns
@@ -40,8 +40,8 @@ class Query:
     def select(self, key, column, query_columns, action = COMMIT_ACTION):
         if (action == COMMIT_ACTION):
             return self.table.select(key, column, query_columns)
-        elif (action == ACQUIRE_LOCK):
-            return self.table.select_acquire_lock(key, column)
+        else:
+            return self.table.select_lock(key, column, action)
 
     """
     # Update a record with specified key and columns
@@ -63,8 +63,8 @@ class Query:
                 bit = bit // 2
             #ridr = int.from_bytes(rid[0], byteorder = "big")
             self.table.update(key, schema_encoding, *columns)
-        elif (action == ACQUIRE_LOCK):
-            return self.table.update_acquire_lock(key)
+        else:
+            return self.table.update_acquire_lock(key, action)
 
     """
     :param start_range: int         # Start of the key range to aggregate
