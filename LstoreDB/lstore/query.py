@@ -64,7 +64,7 @@ class Query:
             #ridr = int.from_bytes(rid[0], byteorder = "big")
             self.table.update(key, schema_encoding, *columns)
         else:
-            return self.table.update_acquire_lock(key, action)
+            return self.table.update_lock(key, action)
 
     """
     :param start_range: int         # Start of the key range to aggregate
@@ -89,5 +89,10 @@ class Query:
                     #curr = int.from_bytes(cur, byteorder = "big")
                     sum += cur.columns[aggregate_column_index]
             return sum
-        elif (action == ACQUIRE_LOCK):
-            pass # FIXME
+        else: # IF ALL LOCKS ACQUIRED, RETURN TRUE, ELSE RETURN FALSE
+            for key in range (start_range, (end_range+1)):
+                isLockAcquired = self.table.select_lock(key, self.table.key, action)
+                if isLockAcquired == False:
+                    return False
+            return True
+
