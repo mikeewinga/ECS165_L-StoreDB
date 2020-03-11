@@ -14,7 +14,7 @@ class Address:
         return Address(self.pagerange, self.flag, new_page_num, self.row)
 
     def __str__(self):
-        output = "(" + self.pagerange + ", " + str(self.page) + ", " + self.row + ")"
+        output = "(" + str(self.pagerange) + ", " + str(self.page) + ", " + str(self.row) + ")"
         return output
 
     def copy(self):
