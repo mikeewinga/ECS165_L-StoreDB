@@ -39,11 +39,8 @@ class Transaction:
 
     def abort(self):
         #ask database/lock manager to release the locks taken so far
-        #TODO: do roll-back and any other necessary operations
-        # release the locks
         for query, args in self.lockedQueries:
             query(*args, action = RELEASE_LOCK)
-            
         return False
 
     def commit(self):

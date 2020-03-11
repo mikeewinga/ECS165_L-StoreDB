@@ -39,7 +39,10 @@ class Query:
 
     def select(self, key, column, query_columns, action = COMMIT_ACTION):
         if (action == COMMIT_ACTION):
-            return self.table.select(key, column, query_columns)
+            record_set = self.table.select(key, column, query_columns)
+            print("select record:")  #FIXME print debug
+            for record in record_set: print(str(record))  #FIXME print debug
+            return record_set
         else:
             return self.table.select_lock(key, column, action)
 
@@ -63,6 +66,7 @@ class Query:
                 bit = bit // 2
             #ridr = int.from_bytes(rid[0], byteorder = "big")
             self.table.update(key, schema_encoding, *columns)
+            print("update columns: " + str(columns))  #FIXME print debug
         else:
             return self.table.update_lock(key, action)
 

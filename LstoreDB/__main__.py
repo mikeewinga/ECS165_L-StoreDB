@@ -21,7 +21,6 @@ print("Inserting 10k records took:  \t\t\t", insert_time_1 - insert_time_0)
 
 # Measuring update Performance
 update_cols = [
-    [randrange(0, 100), None, None, None, None],
     [None, randrange(0, 100), None, None, None],
     [None, None, randrange(0, 100), None, None],
     [None, None, None, randrange(0, 100), None],
@@ -29,9 +28,11 @@ update_cols = [
 ]
 
 t = Transaction()
-key = choice(keys)
-t.add_query(query.update, key, *choice(update_cols))
-t.add_query(query.select, key, 0, [1, 1, 1, 1, 1])
+for i in range(10):
+    key = choice(keys)
+    t.add_query(query.select, key, 0, [1, 1, 1, 1, 1])
+    t.add_query(query.update, key, *choice(update_cols))
+    t.add_query(query.select, key, 0, [1, 1, 1, 1, 1])
 t.run()
 
 exit()

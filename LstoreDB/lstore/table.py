@@ -166,6 +166,7 @@ class Table:
 
     def update_lock(self, key, action):
         self.index.create_index(self.key)
+        # print("primary key: " + str(key))
         rid = self.index.locate(self.key, key)[0]
         prid = (rid - 1) // RANGESIZE
         if (action == ACQUIRE_LOCK):
