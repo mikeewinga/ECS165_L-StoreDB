@@ -29,7 +29,7 @@ class Transaction:
     # locking we have
     def run(self):
         for query, args in self.queries:
-            result = query(*args, action = ACQUIRE_LOCK)
+            result = query(*args, action = ACQUIRE_LOCK, status = UNFINISHED)
             # If the query has failed to take the locks the transaction should abort
             if result == False:
                 return self.abort()
@@ -40,17 +40,17 @@ class Transaction:
     def abort(self):
         #ask database/lock manager to release the locks taken so far
         for query, args in self.lockedQueries:
-            query(*args, action = RELEASE_LOCK)
+            query(*args, action = RELEASE_LOCK, status = ABORTED)
         self.lockedQueries.clear()
         return False
 
     def commit(self):
         # call the query functions to commit
         for query, args in self.queries:
-            query(*args, action = COMMIT_ACTION)
+            query(*args, action = COMMIT_ACTION, status = UNFINISHED)
         # release all the locks at once
         for query, args in self.queries:
-            query(*args, action = RELEASE_LOCK)
+            query(*args, action = RELEASE_LOCK, status = COMMITTED)
         self.lockedQueries.clear()
         return True
 

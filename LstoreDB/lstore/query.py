@@ -12,7 +12,7 @@ class Query:
     """
     Deletes key from database and index
     """
-    def delete(self, primary_key, action = COMMIT_ACTION):
+    def delete(self, primary_key, action = COMMIT_ACTION, status = UNFINISHED):
         if (action == COMMIT_ACTION):
             self.table.delete(primary_key)
         else:
@@ -23,12 +23,16 @@ class Query:
     :param columns: variadic parameters of column values in a record
     """
 
-    def insert(self, *columns, action = COMMIT_ACTION):
+    def insert(self, *columns, action = COMMIT_ACTION, status = UNFINISHED):
         if (action == COMMIT_ACTION):
             #package information into records and pass records to table
             self.table.insert(*columns)
         elif (action == ACQUIRE_LOCK):
-            pass # FIXME
+            return self.table.insert_acquire_lock()
+        elif (action == RELEASE_LOCK and status == COMMITTED):  # committed insert, then release lock on existing record
+            return self.table.insert_release_lock(columns[self.table.key])
+        elif (action == RELEASE_LOCK and status == ABORTED):  # aborted insert, then release lock on conceptual address
+            return self.table.insert_release_lock()
 
     """
     # Read columns from a record with specified key
@@ -37,7 +41,7 @@ class Query:
     :return: list of selected records
     """
 
-    def select(self, key, column, query_columns, action = COMMIT_ACTION):
+    def select(self, key, column, query_columns, action = COMMIT_ACTION, status = UNFINISHED):
         if (action == COMMIT_ACTION):
             record_set = self.table.select(key, column, query_columns)
             print("select record:")  #FIXME print debug
@@ -52,7 +56,7 @@ class Query:
         [None, None, 4, None] specifies to update 3rd column with new value
     """
 
-    def update(self, key, *columns, action = COMMIT_ACTION):
+    def update(self, key, *columns, action = COMMIT_ACTION, status = UNFINISHED):
         if (action == COMMIT_ACTION):
             # invalid input
             if len(columns) < 1:
@@ -76,7 +80,7 @@ class Query:
     :param aggregate_columns: int  # Index of desired column to aggregate
     """
 
-    def sum(self, start_range, end_range, aggregate_column_index, action = COMMIT_ACTION):
+    def sum(self, start_range, end_range, aggregate_column_index, action = COMMIT_ACTION, status = UNFINISHED):
         if (action == COMMIT_ACTION):
             sum = 0
             column_agg =[]
