@@ -1,6 +1,6 @@
 
 # the pseudo lockerManager class to test if transaction.py actually works
-class LockManager:
+class FakeLockManager:
     def __init__(self):
         pass
         
@@ -8,6 +8,6 @@ class LockManager:
         print ("LOCK ACQUIRED for " + table_name + " address " + str(address) + " action " + actionName + "\n")
         return True
 
-    def releaseLock(self, table_name, address, actionName):
+    def releaseLock(self, table_name = "table", address = None, actionName = "action"):
         print ("LOCK RELEASED for " + table_name + " address " + str(address) + " action " + actionName + "\n")
         return True

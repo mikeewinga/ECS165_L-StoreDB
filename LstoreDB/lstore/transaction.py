@@ -1,5 +1,4 @@
-from lstore.table import Table, Record
-from lstore.index import Index
+from lstore.index import *
 from lstore.config import *
 
 class Transaction:
@@ -9,7 +8,7 @@ class Transaction:
     """
     def __init__(self):
         self.queries = []
-        self.lockedQueries = [] # store the queries with acquired locks
+        # self.lockedQueries = [] # store the queries with acquired locks
         pass
 
     """
@@ -33,15 +32,16 @@ class Transaction:
             # If the query has failed to take the locks the transaction should abort
             if result == False:
                 return self.abort()
-            else: # store all the queries with acquired locks
-                self.lockedQueries.append((query,args))
+            # else: # store all the queries with acquired locks
+            #     self.lockedQueries.append((query,args))
         return self.commit()
 
     def abort(self):
         #ask database/lock manager to release the locks taken so far
-        for query, args in self.lockedQueries:
-            query(*args, action = RELEASE_LOCK, status = ABORTED)
-        self.lockedQueries.clear()
+        # for query, args in self.lockedQueries:
+        #     query(*args, action = RELEASE_LOCK, status = ABORTED)
+        # self.lockedQueries.clear()
+        lstore.globals.lockManager.releaseLock()
         return False
 
     def commit(self):
@@ -49,9 +49,10 @@ class Transaction:
         for query, args in self.queries:
             query(*args, action = COMMIT_ACTION, status = UNFINISHED)
         # release all the locks at once
-        for query, args in self.queries:
-            query(*args, action = RELEASE_LOCK, status = COMMITTED)
-        self.lockedQueries.clear()
+        # for query, args in self.queries:
+        #     query(*args, action = RELEASE_LOCK, status = COMMITTED)
+        # self.lockedQueries.clear()
+        lstore.globals.lockManager.releaseLock()
         return True
 
 
