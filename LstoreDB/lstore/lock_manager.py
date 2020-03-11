@@ -56,17 +56,20 @@ class lockNode:
             3| n n y n
             4| n n n n
         """
+        # if the CurrentLock is empty
+        if(self.total_locks == 0):
+            return 1
         # if CurrentLock has S and NewLock wants S
         if(self.locks[S] >= 0 and lock == S):
             return 1
         # if the sum of the CurrentLock and NewLock
         # is less than or equal to 4
-        for type in range(1,2):
+        for type in range(1,3):
             sum = lock
             if(self.locks[type] > 0):
                 sum += type
-            if(sum <= 4):
-                return 1
+                if(sum <= 4):
+                    return 1
         # Else, a NewLock cannot be added
         return 0       
 
@@ -98,12 +101,16 @@ class lockTree:
         lock_changed = 0
         try:
             node.child[path[0]]
+        #if the child node doens't exist, create it and traverse
         except (IndexError, KeyError):
             new_node = lockNode(node, path.pop(0))
             node.child[new_node.nodeID] = new_node
             lock_changed = self.traverse(new_node, path, opperation, lock_change)
+            # if all locks are removed from its children and if 
+            # this node has no locks, delete this node
             if(new_node.total_locks == 0):
-                del new_node
+                del node.child[new_node.nodeID]
+            # if its child added a lock, increase/decrease its total lock counter
             if(lock_changed):
                 if(opperation == 'add'):
                     node.total_locks += 1
@@ -112,10 +119,15 @@ class lockTree:
                     node.total_locks -= 1
                     return 1
             return 0
+        # if the child node exists, traverse it
         else:
-            lock_changed = self.traverse(new_node, path, opperation, lock_change)
-            if(new_node.total_locks == 0):
-                del new_node
+            next_node = path.pop(0)
+            lock_changed = self.traverse(node.child[next_node], path, opperation, lock_change)
+            # if all locks are removed from its children and if 
+            # this node has no locks, delete this node
+            if(node.child[next_node].total_locks == 0):
+                del node.child[next_node]
+            # if its child added a lock, increase/decrease its total lock counter
             if(lock_changed):
                 if(opperation == 'add'):
                     node.total_locks += 1
@@ -138,7 +150,8 @@ class lockTree:
                 return 1
             return 0
         else:
-            lock_changed = self.traverse(new_node, path, opperation, lock_change)
+            next_node = path.pop(0)
+            lock_changed = self.traverse(self.root.child[next_node], path, opperation, lock_change)
             if(lock_changed):
                 return 1
             return 0
@@ -148,6 +161,7 @@ class lockTree:
     def debug_traverse(self, node):
         print("nodeID: ", node.nodeID)
         print("parent: ", node.parent.nodeID)
+        print("total locks: ", node.total_locks)
         print("locks: ", node.locks)
         print("---------")
         for key in node.child:
@@ -175,22 +189,28 @@ class lockTree:
         print("END OF TREE")
         print("")
 
-
+"""
+# TEST SCRIPT FOR LOCKTREE
 
 tree = lockTree()
 tree.debug_print()
 print(" ")
 path1 = ["Grades", 1, 58, 275]
 path2 = ["Grades", 0, 68, 175]
-
 add = "add"
 remove= "remove"
-tree.change_lock(path1, add, 3)
-path1 = ["Grades", 1, 58, 275]
 
+tree.change_lock(path1, add, 2)
+path1 = ["Grades", 1, 58, 275]
+tree.change_lock(path1, add, 1)
+path1 = ["Grades", 1, 58, 275]
 tree.debug_print()
 
 tree.change_lock(path1, remove, 2)
 path1 = ["Grades", 1, 58, 275]
-
 tree.debug_print()
+
+tree.change_lock(path1, remove, 1)
+path1 = ["Grades", 1, 58, 275]
+tree.debug_print()
+"""
