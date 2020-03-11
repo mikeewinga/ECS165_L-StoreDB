@@ -41,6 +41,7 @@ class Transaction:
         #ask database/lock manager to release the locks taken so far
         for query, args in self.lockedQueries:
             query(*args, action = RELEASE_LOCK)
+        self.lockedQueries.clear()
         return False
 
     def commit(self):
@@ -50,6 +51,7 @@ class Transaction:
         # release all the locks at once
         for query, args in self.queries:
             query(*args, action = RELEASE_LOCK)
+        self.lockedQueries.clear()
         return True
 
 
