@@ -202,10 +202,7 @@ class PageRange:
         return self.index.indexDict
 
     def acquire_lock(self, rid, actionName):
-        #FIXME =)
-        global lockManager
-        return lockManager.getLock(self.table_name, self.index.read(rid), actionName)
+        return lstore.globals.lockManager.getLock(self.table_name, self.index.read(rid), actionName)
 
     def release_lock(self, rid, actionName):
-        global lockManager
-        return lockManager.releaseLock(self.table_name, self.index.read(rid), actionName)
+        return lstore.globals.lockManager.releaseLock(self.table_name, self.index.read(rid), actionName)
