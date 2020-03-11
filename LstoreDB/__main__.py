@@ -35,6 +35,8 @@ for i in range(10):
     t.add_query(query.select, key, 0, [1, 1, 1, 1, 1])
 t.run()
 
+db.close()
+
 exit()
 
 """

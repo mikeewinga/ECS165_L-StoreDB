@@ -96,6 +96,7 @@ class Query:
                 for cur in mList:
                     #curr = int.from_bytes(cur, byteorder = "big")
                     sum += cur.columns[aggregate_column_index]
+            print("sum operation: " + str(sum))  # FIXME print debug
             return sum
         else: # IF ALL LOCKS ACQUIRED, RETURN TRUE, ELSE RETURN FALSE
             for key in range (start_range, (end_range+1)):
