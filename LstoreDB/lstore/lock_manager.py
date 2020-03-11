@@ -37,6 +37,7 @@ class lockNode:
         self.nodeID = nodeID
         self.parent = parent
         self.child = {}
+        self.total_locks = 0
         self.locks = [0,0,0,0,0]
         # locks[0] will never be accessed
     
@@ -87,38 +88,58 @@ class lockTree:
             if(opperation == 'add'):
                 if(node.compare_locks(lock_change)):
                     node.add_lock(lock_change)
+                    node.total_locks += 1
                     return 1
-                else:
-                    return 0
             if(opperation == 'remove'):
                 node.remove_lock(lock_change)
+                node.total_locks -= 1
                 return 1
+            return 0
+        lock_changed = 0
         try:
             node.child[path[0]]
         except (IndexError, KeyError):
             new_node = lockNode(node, path.pop(0))
             node.child[new_node.nodeID] = new_node
-            if(self.traverse(new_node, path, opperation, lock_change)):
-                return 1
+            lock_changed = self.traverse(new_node, path, opperation, lock_change)
+            if(new_node.total_locks == 0):
+                del new_node
+            if(lock_changed):
+                if(opperation == 'add'):
+                    node.total_locks += 1
+                    return 1
+                else: 
+                    node.total_locks -= 1
+                    return 1
             return 0
         else:
-            if(self.traverse(node.child[path.pop(0)], path, opperation, lock_change)):
-                return 1
+            lock_changed = self.traverse(new_node, path, opperation, lock_change)
+            if(new_node.total_locks == 0):
+                del new_node
+            if(lock_changed):
+                if(opperation == 'add'):
+                    node.total_locks += 1
+                    return 1
+                else: 
+                    node.total_locks -= 1
+                    return 1
             return 0
 
     # this will start the add or remove lock process
     def change_lock(self, path, opperation, lock_change):
-        #
+        lock_changed = 0
         try:
             self.root.child[path[0]]
         except (IndexError, KeyError):
             new_node = lockNode(self.root, path.pop(0))
             self.root.child[new_node.nodeID] = new_node
-            if(self.traverse(new_node, path, opperation, lock_change)):
+            lock_changed = self.traverse(new_node, path, opperation, lock_change)
+            if(lock_changed):
                 return 1
             return 0
         else:
-            if(self.traverse(self.root.child[path.pop(0)], path, opperation, lock_change)): 
+            lock_changed = self.traverse(new_node, path, opperation, lock_change)
+            if(lock_changed):
                 return 1
             return 0
 
@@ -161,24 +182,15 @@ tree.debug_print()
 print(" ")
 path1 = ["Grades", 1, 58, 275]
 path2 = ["Grades", 0, 68, 175]
-path3 = ["Grades", 0, 68, 177]
-path4 = ["Grades", 1, 55, 275]
+
 add = "add"
 remove= "remove"
 tree.change_lock(path1, add, 3)
 path1 = ["Grades", 1, 58, 275]
-tree.change_lock(path2, add, 1)
-path2 = ["Grades", 0, 68, 175]
-tree.change_lock(path3, add, 4)
-path3 = ["Grades", 0, 68, 177]
-tree.change_lock(path3, add, 4)
-path3 = ["Grades", 0, 68, 177]
-tree.change_lock(path1, add, 2)
-path1 = ["Grades", 1, 58, 275]
+
 tree.debug_print()
 
 tree.change_lock(path1, remove, 2)
 path1 = ["Grades", 1, 58, 275]
-tree.change_lock(path2, remove, 1)
-path2 = ["Grades", 0, 68, 175]
+
 tree.debug_print()
