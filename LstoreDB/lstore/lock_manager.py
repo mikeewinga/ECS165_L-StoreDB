@@ -1,23 +1,36 @@
 import threading
 from config import *
-
-
+#import config
 
 class LockManager:
     def __init__(self):
+        self.lock_dict = {}
         self.locks = {}
+        self.lock_tree = lockTree()
         pass
     
-    #def getlock(self, type_l, level, index):
-    def getlock(self, tabOrAddr):
+    # path is [table, page_range, page, row]
+    def getlock(self, path, lock_type):
         thread_id = threading.get_ident()
+        target = self.lock_dict.get(thread_id)
 
-        target = self.locks.get(thread_id)
+        new_lock = Lock(lock_type, path.table, path.page_range, path.page, path.row)
+
         if target:
-            pass #TODO stuff
+            if (self.lock_tree.change_lock(path, "add", new_lock)): # if lock added - returns 1
+                self.locks[path] = new_lock
+                self.lock_dict[thread_id] = self.locks
+                return 1
+            else:
+                return 0
         else:
-            self.locks[thread_id] = {} #insert into locks
+            self.lock_tree.change_lock(path, "add", new_lock)
+            #self.locks[thread_id] = {} #insert into locks
 
+
+            self.locks[path] = new_lock
+            self.lock_dict[thread_id] = self.locks
+            return 1
 
         #check if thread already has needed lock
         #go from top level down and acquire locks
@@ -51,9 +64,9 @@ class lockNode:
         """
              | 1 2 3 4
             _|_________
-            1| y y n n
+            1| y y y n
             2| y y n n
-            3| n n y n
+            3| y n y n
             4| n n n n
         """
         # if the CurrentLock is empty
@@ -68,7 +81,7 @@ class lockNode:
             sum = lock
             if(self.locks[type] > 0):
                 sum += type
-                if(sum <= 4):
+                if(sum < 5):
                     return 1
         # Else, a NewLock cannot be added
         return 0       
@@ -191,9 +204,8 @@ class lockTree:
 
 """
 # TEST SCRIPT FOR LOCKTREE
-
 tree = lockTree()
-tree.debug_print()
+
 print(" ")
 path1 = ["Grades", 1, 58, 275]
 path2 = ["Grades", 0, 68, 175]
@@ -205,6 +217,10 @@ path1 = ["Grades", 1, 58, 275]
 tree.change_lock(path1, add, 1)
 path1 = ["Grades", 1, 58, 275]
 tree.debug_print()
+
+# tree.change_lock(path1, add, 3)
+# path1 = ["Grades", 1, 58, 275]
+# tree.debug_print()
 
 tree.change_lock(path1, remove, 2)
 path1 = ["Grades", 1, 58, 275]
