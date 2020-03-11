@@ -27,12 +27,12 @@ class Query:
         if (action == COMMIT_ACTION):
             #package information into records and pass records to table
             self.table.insert(*columns)
-        elif (action == ACQUIRE_LOCK):
-            return self.table.insert_acquire_lock()
-        elif (action == RELEASE_LOCK and status == COMMITTED):  # committed insert, then release lock on existing record
-            return self.table.insert_release_lock(columns[self.table.key])
-        elif (action == RELEASE_LOCK and status == ABORTED):  # aborted insert, then release lock on conceptual address
-            return self.table.insert_release_lock()
+        else:
+            return self.table.insert_lock()
+        # elif (action == RELEASE_LOCK and status == COMMITTED):  # committed insert, then release lock on existing record
+        #     return self.table.insert_release_lock(columns[self.table.key])
+        # elif (action == RELEASE_LOCK and status == ABORTED):  # aborted insert, then release lock on conceptual address
+        #     return self.table.insert_release_lock()
 
     """
     # Read columns from a record with specified key

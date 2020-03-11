@@ -204,5 +204,5 @@ class PageRange:
     def acquire_lock(self, rid, actionName):
         return lstore.globals.lockManager.getLock(self.table_name, self.index.read(rid), actionName)
 
-    def release_lock(self, rid, actionName):
-        return lstore.globals.lockManager.releaseLock(self.table_name, self.index.read(rid), actionName)
+    # def release_lock(self, rid, actionName):
+    #     return lstore.globals.lockManager.releaseLock(self.table_name, self.index.read(rid), actionName)
