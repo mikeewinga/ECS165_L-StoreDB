@@ -1,51 +1,16 @@
 import threading
+import copy
 from config import *
 #import config
 
-class LockManager:
-    def __init__(self):
-        self.lock_dict = {}
-        self.locks = {}
-        self.lock_tree = lockTree()
-        pass
-    
-    # path is [table, page_range, page, row]
-    def getlock(self, path, lock_type):
-        thread_id = threading.get_ident()
-        target = self.lock_dict.get(thread_id)
-
-        new_lock = Lock(lock_type, path.table, path.page_range, path.page, path.row)
-
-        if target:
-            if (self.lock_tree.change_lock(path, "add", new_lock)): # if lock added - returns 1
-                self.locks[path] = new_lock
-                self.lock_dict[thread_id] = self.locks
-                return 1
-            else:
-                return 0
-        else:
-            self.lock_tree.change_lock(path, "add", new_lock)
-            #self.locks[thread_id] = {} #insert into locks
-
-
-            self.locks[path] = new_lock
-            self.lock_dict[thread_id] = self.locks
-            return 1
-
-        #check if thread already has needed lock
-        #go from top level down and acquire locks
-        #check: if acquired IS on higher level, cannot get X or IX on lower level 
-
 class Lock:
-    #def __init__(self, type_l, level, index):
     def __init__(self, table, page_range, page, row):
         self.table = table
         self.page_range = page_range
         self.page = page
         self.row = row
 
-class lockNode:
-
+class lockNode:  
     def __init__(self, parent, nodeID):
         self.nodeID = nodeID
         self.parent = parent
@@ -121,7 +86,7 @@ class lockTree:
             lock_changed = self.traverse(new_node, path, opperation, lock_change)
             # if all locks are removed from its children and if 
             # this node has no locks, delete this node
-            if(new_node.total_locks == 0):
+            if(node.child[new_node.nodeID].total_locks == 0):
                 del node.child[new_node.nodeID]
             # if its child added a lock, increase/decrease its total lock counter
             if(lock_changed):
@@ -202,6 +167,82 @@ class lockTree:
         print("END OF TREE")
         print("")
 
+class LockManager:
+    def __init__(self):
+        self.lock_dict = {}
+        self.locks = {}
+        self.lock_tree = lockTree()
+        pass
+    
+    # path is [table, page_range, page, row]
+    def add_lock(self, query_opp, table_name, address):
+        thread_id = threading.get_ident()
+        target = self.lock_dict.get(thread_id)
+
+        page_range = str(address.pagerange)
+        page = str(address.page)
+        row = str(address.row)
+        path_T = [table_name]
+        path_PR = [table_name, page_range]
+        path_P = [table_name, page_range, page]
+        path_R = [table_name, page_range, page, row]
+
+        curr_path = "|".join(str(p) for p in path_R)
+        new_lock = None
+        lock_complete = 0
+
+        if query_opp == 1:
+            lock_complete = self.lock_tree.change_lock(path_T, 'add', IX)
+            lock_complete = self.lock_tree.change_lock(path_PR, 'add', IX)
+            lock_complete = self.lock_tree.change_lock(path_P, 'add', IX)
+            lock_complete = self.lock_tree.change_lock(path_R, 'add', X)
+            new_lock = Lock(IX, IX, IX, X)
+        else:
+            lock_complete = self.lock_tree.change_lock(path_T, 'add', IS)
+            lock_complete = self.lock_tree.change_lock(path_PR, 'add', IS)
+            lock_complete = self.lock_tree.change_lock(path_P, 'add', IS)
+            lock_complete = self.lock_tree.change_lock(path_R, 'add', S)
+            new_lock = Lock(IS, IS, IS, S)
+
+        if lock_complete:
+            self.locks[curr_path] = new_lock
+            self.lock_dict[thread_id] = self.locks
+            return 1
+        else:
+            return 0
+
+    def remove_lock(self):
+        thread_id = threading.get_ident()
+        target = self.lock_dict.get(thread_id)
+        lock_complete = 0
+
+        for path, lock in target.items():
+            table_name, page_range, page, row = path.split('|')
+
+            query_opp = lock.row
+
+            path_T = [table_name]
+            path_PR = [table_name, page_range]
+            path_P = [table_name, page_range, page]
+            path_R = [table_name, page_range, page, row]
+
+            if query_opp == X:
+                lock_complete = self.lock_tree.change_lock(path_R, 'remove', X)
+                lock_complete = self.lock_tree.change_lock(path_P, 'remove', IX)
+                lock_complete = self.lock_tree.change_lock(path_PR, 'remove', IX)
+                lock_complete = self.lock_tree.change_lock(path_T, 'remove', IX)
+            else:
+                lock_complete = self.lock_tree.change_lock(path_R, 'remove', S)
+                lock_complete = self.lock_tree.change_lock(path_P, 'remove', IS)
+                lock_complete = self.lock_tree.change_lock(path_PR, 'remove', IS)
+                lock_complete = self.lock_tree.change_lock(path_T, 'remove', IS)
+
+        if lock_complete:
+            del self.lock_dict[thread_id]
+            return 1
+        else:
+            return 0
+
 """
 # TEST SCRIPT FOR LOCKTREE
 tree = lockTree()
@@ -212,10 +253,24 @@ path2 = ["Grades", 0, 68, 175]
 add = "add"
 remove= "remove"
 
-tree.change_lock(path1, add, 2)
 path1 = ["Grades", 1, 58, 275]
+tree.change_lock(path1, add, 3)
+path1 = ["Grades", 1, 58]
+tree.change_lock(path1, add, 1)
+path1 = ["Grades", 1]
+tree.change_lock(path1, add, 1)
+path1 = ["Grades"]
+tree.change_lock(path1, add, 1)
+tree.debug_print()
+
+path1 = ["Grades"]
+tree.change_lock(path1, add, 1)
+path1 = ["Grades", 1]
+tree.change_lock(path1, add, 1)
+path1 = ["Grades", 1, 58]
 tree.change_lock(path1, add, 1)
 path1 = ["Grades", 1, 58, 275]
+tree.change_lock(path1, add, 3)
 tree.debug_print()
 
 # tree.change_lock(path1, add, 3)
@@ -229,4 +284,28 @@ tree.debug_print()
 tree.change_lock(path1, remove, 1)
 path1 = ["Grades", 1, 58, 275]
 tree.debug_print()
+"""
+
+"""
+#TEST SCRIPT FOR LOCKMANAGER
+class Address:
+    #Base/Tail flag, Page-range number, Page number, Row number
+    def __init__(self, pagerange, flag, pagenumber, row = None):
+        self.pagerange = pagerange
+        self.flag = flag  # values: 0--base, 1--tail, 2--base page copy used for merge
+        self.pagenumber = pagenumber
+        self.page = (flag, pagenumber)
+        self.row = row
+
+tableName = 'Grades'
+address = Address(2, 0, 58, 275)
+address1 = Address(2, 0, 58, 277)
+address2 = Address(3, 0, 36, 120)
+
+lm =  LockManager()
+
+lm.add_lock(INSERT, tableName, address)
+lm.lock_tree.debug_print()
+lm.remove_lock()
+lm.lock_tree.debug_print()
 """

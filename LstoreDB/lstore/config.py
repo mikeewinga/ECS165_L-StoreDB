@@ -50,5 +50,13 @@ PAGERANGE   = 2
 PAGE        = 3
 ROW         = 4
 
+#lockManager switch statement opp
+INSERT  = 1
+SELECT  = 2
+SUM     = 2
+UPDATE  = 1
+DELETE  = 1
+#Sum and select have the same opp
+
 def init():
     pass
