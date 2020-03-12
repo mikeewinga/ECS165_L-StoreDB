@@ -160,20 +160,15 @@ class Table:
         lstore.globals.control.release()
         return record_set
 
-    def select_lock(self, key, column, action):
+    def select_lock(self, key, column):
         self.index.create_index(column)
         ridList = self.index.locate(column, key)
-        if (action == ACQUIRE_LOCK):
-            for rid in ridList:
-                prid = (rid - 1) // RANGESIZE
-                got_lock = self.pageranges[prid].acquire_lock(rid, "select")
-                if (not got_lock):
-                    return False
-            return True
-        # elif (action == RELEASE_LOCK):
-        #     for rid in ridList:
-        #         prid = (rid - 1) // RANGESIZE
-        #         self.pageranges[prid].release_lock(rid, "select")
+        for rid in ridList:
+            prid = (rid - 1) // RANGESIZE
+            got_lock = self.pageranges[prid].acquire_lock(rid, "select")
+            if (not got_lock):
+                return False
+        return True
 
     def update(self, key, tail_schema, *columns):
         lstore.globals.control.acquire()
@@ -187,15 +182,12 @@ class Table:
         self.current_Rid_tail = self.current_Rid_tail - 1
         lstore.globals.control.release()
 
-    def update_lock(self, key, action):
+    def update_lock(self, key):
         self.index.create_index(self.key)
         # print("primary key: " + str(key))
         rid = self.index.locate(self.key, key)[0]
         prid = (rid - 1) // RANGESIZE
-        if (action == ACQUIRE_LOCK):
-            return self.pageranges[prid].acquire_lock(rid, "update")
-        # elif (action == RELEASE_LOCK):
-        #     return self.pageranges[prid].release_lock(rid, "update")
+        return self.pageranges[prid].acquire_lock(rid, "update")
 
     def delete(self, key):
         lstore.globals.control.acquire()
@@ -208,13 +200,10 @@ class Table:
         self.pageranges[prid].delete(rid)
         lstore.globals.control.release()
 
-    def delete_lock(self, key, action):
+    def delete_lock(self, key):
         rid = self.index.locate(self.key, key)[0]
         prid = (rid - 1) // RANGESIZE
-        if (action == ACQUIRE_LOCK):
-            return self.pageranges[prid].acquire_lock(rid, "delete")
-        # elif (action == RELEASE_LOCK):
-        #     return self.pageranges[prid].release_lock(rid, "delete")
+        return self.pageranges[prid].acquire_lock(rid, "delete")
 
     def close(self):
         overall_page_directory = {}

@@ -8,7 +8,6 @@ class Transaction:
     """
     def __init__(self):
         self.queries = []
-        # self.lockedQueries = [] # store the queries with acquired locks
         pass
 
     """
@@ -25,30 +24,22 @@ class Transaction:
     # return True if transaction commits or False on abort
     def run(self):
         for query, args in self.queries:
-            result = query(*args, action = ACQUIRE_LOCK, status = UNFINISHED)
+            result = query(*args, action = ACQUIRE_LOCK)
             # If the query has failed to take the locks the transaction should abort
             if result == False:
                 return self.abort()
-            # else: # store all the queries with acquired locks
-            #     self.lockedQueries.append((query,args))
         return self.commit()
 
     def abort(self):
         #ask database/lock manager to release the locks taken so far
-        # for query, args in self.lockedQueries:
-        #     query(*args, action = RELEASE_LOCK, status = ABORTED)
-        # self.lockedQueries.clear()
         lstore.globals.lockManager.releaseLock()
         return False
 
     def commit(self):
         # call the query functions to commit
         for query, args in self.queries:
-            query(*args, action = COMMIT_ACTION, status = UNFINISHED)
+            query(*args, action = COMMIT_ACTION)
         # release all the locks at once
-        # for query, args in self.queries:
-        #     query(*args, action = RELEASE_LOCK, status = COMMITTED)
-        # self.lockedQueries.clear()
         lstore.globals.lockManager.releaseLock()
         return True
 

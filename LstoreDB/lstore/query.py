@@ -14,27 +14,23 @@ class Query:
     """
     Deletes key from database and index
     """
-    def delete(self, primary_key, action = COMMIT_ACTION, status = UNFINISHED):
+    def delete(self, primary_key, action = COMMIT_ACTION):
         if (action == COMMIT_ACTION):
             self.table.delete(primary_key)
         else:
-            return self.table.delete_lock(primary_key, action)
+            return self.table.delete_lock(primary_key)
 
     """
     # Insert a record with specified columns
     :param columns: variadic parameters of column values in a record
     """
 
-    def insert(self, *columns, action = COMMIT_ACTION, status = UNFINISHED):
+    def insert(self, *columns, action = COMMIT_ACTION):
         if (action == COMMIT_ACTION):
             #package information into records and pass records to table
             self.table.insert(*columns)
         else:
             return self.table.insert_lock()
-        # elif (action == RELEASE_LOCK and status == COMMITTED):  # committed insert, then release lock on existing record
-        #     return self.table.insert_release_lock(columns[self.table.key])
-        # elif (action == RELEASE_LOCK and status == ABORTED):  # aborted insert, then release lock on conceptual address
-        #     return self.table.insert_release_lock()
 
     """
     # Read columns from a record with specified key
@@ -46,14 +42,14 @@ class Query:
     # Assume that select will never be called on a key that doesn't exist
     """
 
-    def select(self, key, column, query_columns, action = COMMIT_ACTION, status = UNFINISHED):
+    def select(self, key, column, query_columns, action = COMMIT_ACTION):
         if (action == COMMIT_ACTION):
             record_set = self.table.select(key, column, query_columns)
             print("select record:")  #FIXME print debug
             for record in record_set: print(str(record))  #FIXME print debug
             return record_set
         else:
-            return self.table.select_lock(key, column, action)
+            return self.table.select_lock(key, column)
 
     """
     # Update a record with specified key and columns
@@ -61,7 +57,7 @@ class Query:
         [None, None, 4, None] specifies to update 3rd column with new value
     """
 
-    def update(self, key, *columns, action = COMMIT_ACTION, status = UNFINISHED):
+    def update(self, key, *columns, action = COMMIT_ACTION):
         if (action == COMMIT_ACTION):
             # invalid input
             if len(columns) < 1:
@@ -77,7 +73,7 @@ class Query:
             self.table.update(key, schema_encoding, *columns)
             print("update columns: " + str(columns))  #FIXME print debug
         else:
-            return self.table.update_lock(key, action)
+            return self.table.update_lock(key)
 
     """
     :param start_range: int         # Start of the key range to aggregate
@@ -87,7 +83,7 @@ class Query:
     # Returns False if no record exists in the given range
     """
 
-    def sum(self, start_range, end_range, aggregate_column_index, action = COMMIT_ACTION, status = UNFINISHED):
+    def sum(self, start_range, end_range, aggregate_column_index, action = COMMIT_ACTION):
         if (action == COMMIT_ACTION):
             sum = 0
             column_agg =[]
@@ -107,7 +103,7 @@ class Query:
             return sum
         else: # IF ALL LOCKS ACQUIRED, RETURN TRUE, ELSE RETURN FALSE
             for key in range (start_range, (end_range+1)):
-                isLockAcquired = self.table.select_lock(key, self.table.key, action)
+                isLockAcquired = self.table.select_lock(key, self.table.key)
                 if isLockAcquired == False:
                     return False
             return True
@@ -120,11 +116,13 @@ class Query:
     # Returns True is increment is successful
     # Returns False if no record matches key or if target record is locked by 2PL.
     """
-    def increment(self, key, column):
-        r = self.select(key, self.table.key, [1] * self.table.num_columns)[0]
-        if r is not False:
-            updated_columns = [None] * self.table.num_columns
-            updated_columns[column] = r[column] + 1
-            u = self.update(key, *updated_columns)
-            return u
-        return False
+    def increment(self, key, column, action = COMMIT_ACTION):
+        if (action == COMMIT_ACTION):
+            r = self.select(key, self.table.key, [1] * self.table.num_columns)[0]
+            if r is not False:
+                updated_columns = [None] * self.table.num_columns
+                updated_columns[column] = r[column] + 1
+                u = self.update(key, *updated_columns)
+                return u
+        else:
+            return self.table.update_lock(key)
