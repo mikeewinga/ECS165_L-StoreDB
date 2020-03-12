@@ -41,5 +41,26 @@ ACQUIRE_LOCK = 0
 RELEASE_LOCK = 1
 COMMIT_ACTION = 2
 
+#lock types
+IS = 1
+IX = 2
+S  = 3
+X  = 4
+
+#lock levels
+DATABASE    = 0
+TABLE       = 1
+PAGERANGE   = 2
+PAGE        = 3
+ROW         = 4
+
+#lockManager switch statement opp
+INSERT  = 1
+SELECT  = 2
+SUM     = 2
+UPDATE  = 1
+DELETE  = 1
+#Sum and select have the same opp
+
 def init():
     pass

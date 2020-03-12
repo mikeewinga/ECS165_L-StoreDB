@@ -94,6 +94,7 @@ class Bufferpool:
     Delete the LRU page
     """
     def evict(self):
+        lstore.globals.cont.acquire()
         # popItem pops and returns (key, value) in FIFO order with False arg
         address_to_page = self.page_map.popitem(False)
         table_name = address_to_page[0][0]
@@ -102,21 +103,29 @@ class Bufferpool:
         page = address_to_page[1]
         if (page.pin_count > 0):  # page is in use
             self.page_map[(table_name, page_range_num, page_num)] = page  # re-add the page back into dictionary
+            lstore.globals.cont.release() 
             return ()
         else:
+            lstore.globals.cont.release()
             return address_to_page
 
     def add_page(self, table_name, address, page):
+        lstore.globals.cont.acquire()
         self.page_map[(table_name, address.pagerange, address.page)] = page
         # self.page_map.move_to_end((table_name, address.pagerange, address.page))
+        lstore.globals.cont.release()
 
     def pin_page(self, table_name, address):
+        lstore.globals.cont.acquire()
         #self.page_map[(table_name, address.pagerange, address.page)].pin_count += 1
         self.page_map[(table_name, address.pagerange, address.page)].pin()
+        lstore.globals.cont.release()
 
     def unpin_page(self, table_name, address):
+        lstore.globals.cont.acquire()
         #self.page_map[(table_name, address.pagerange, address.page)].pin_count -= 1
         self.page_map[(table_name, address.pagerange, address.page)].unpin()
+        lstore.globals.cont.release()
 
 
 class DiskManager:
@@ -127,13 +136,11 @@ class DiskManager:
         self.active_table_metadata = {}  # { string table_name: (int primary key index, int num_user_columns, current_rid_base, current_rid_tail, current_prid, {prid : (bOffset, tOffset, cur_tid, mOffset, merge_f)} }
 
     def set_directory_path(self, directory_path):
-        lstore.globals.access.acquire()
         self.directory_path = directory_path + "/"
         try:
             os.makedirs(directory_path)
         except OSError:
             if(os.path.exists(directory_path)):
-                lstore.globals.access.release()
                 return
             else:
                 #print("Creation of the directory %s failed" % directory_path)
@@ -141,7 +148,6 @@ class DiskManager:
         else:
             #print("Successfully created the directory %s " % directory_path)
             pass
-        lstore.globals.access.release()
 
     """
     :param primary_key: index of primary user column
