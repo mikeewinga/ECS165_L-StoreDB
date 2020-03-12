@@ -67,7 +67,6 @@ class Bufferpool:
         merge_address = address.copy()
         merge_address.change_flag(2)  # change the base/tail flag to 2, so address refers to merge base page
         merge_page = self.page_map[(table_name, merge_address.pagerange, merge_address.page)]
-        #merge_page.pin()
         orig_page.unpin()
         merge_page.unpin()
         # delete the entry for merge page address from page_map
