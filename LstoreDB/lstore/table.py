@@ -109,10 +109,10 @@ class Table:
         # IF page range id > than current max prid -> take the lock for conceptual address of new page range / record
         if prid > self.current_Prid:
             lock_address = Address(prid, 0, 0, 1)  # hardcode address of where the new record is supposed to be inserted
-            is_locked = lstore.globals.lockManager.getLock(self.name, lock_address, "insert")
+            is_locked = lstore.globals.lockManager.add_lock(INSERT, self.name, lock_address)
             return is_locked
         else:
-            return self.pageranges[prid].acquire_lock(self.current_Rid_base, "insert")
+            return self.pageranges[prid].acquire_lock(self.current_Rid_base, INSERT)
 
     # def insert_release_lock(self, primary_key = None):
     #     if (primary_key):  # insert was committed, releasing lock on existing record
@@ -165,7 +165,7 @@ class Table:
         ridList = self.index.locate(column, key)
         for rid in ridList:
             prid = (rid - 1) // RANGESIZE
-            got_lock = self.pageranges[prid].acquire_lock(rid, "select")
+            got_lock = self.pageranges[prid].acquire_lock(rid, SELECT)
             if (not got_lock):
                 return False
         return True
@@ -187,7 +187,7 @@ class Table:
         # print("primary key: " + str(key))
         rid = self.index.locate(self.key, key)[0]
         prid = (rid - 1) // RANGESIZE
-        return self.pageranges[prid].acquire_lock(rid, "update")
+        return self.pageranges[prid].acquire_lock(rid, UPDATE)
 
     def delete(self, key):
         lstore.globals.control.acquire()
@@ -203,7 +203,7 @@ class Table:
     def delete_lock(self, key):
         rid = self.index.locate(self.key, key)[0]
         prid = (rid - 1) // RANGESIZE
-        return self.pageranges[prid].acquire_lock(rid, "delete")
+        return self.pageranges[prid].acquire_lock(rid, DELETE)
 
     def close(self):
         overall_page_directory = {}

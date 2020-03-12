@@ -1,6 +1,6 @@
 import threading
 import copy
-from config import *
+from lstore.config import *
 #import config
 
 class Lock:

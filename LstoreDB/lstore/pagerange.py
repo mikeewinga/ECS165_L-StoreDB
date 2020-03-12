@@ -201,8 +201,5 @@ class PageRange:
     def get_pagedir_dict(self):
         return self.index.indexDict
 
-    def acquire_lock(self, rid, actionName):
-        return lstore.globals.lockManager.getLock(self.table_name, self.index.read(rid), actionName)
-
-    # def release_lock(self, rid, actionName):
-    #     return lstore.globals.lockManager.releaseLock(self.table_name, self.index.read(rid), actionName)
+    def acquire_lock(self, rid, query_opp):
+        return lstore.globals.lockManager.add_lock(query_opp, self.table_name, self.index.read(rid))
