@@ -25,6 +25,9 @@ class Page:
         if self.pin_count:
             self.pin_count -= 1
 
+    def clearpin(self):
+        self.pin_count = 0
+
     """
     Checks if there is space left in page
     """

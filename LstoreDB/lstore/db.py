@@ -27,8 +27,8 @@ class Merger:
         return offset
 
     def merge(self,table, page_Range):
-        lstore.globals.control.acquire()
-        #print("merging", page_Range.prid, page_Range.tOffSet)
+        lstore.globals.control.latch()
+        print("merging", page_Range.prid, page_Range.tOffSet)
         #acquire all required resources that are time critical
         #clear delete_queue
         page_Range.delete_queue = []
@@ -38,12 +38,12 @@ class Merger:
         step = NUM_METADATA_COLUMNS + page_Range.num_columns
         tid = copy.deepcopy(page_Range.cur_tid)
         stoper = page_Range.mOffSet - 1
-        mindex = copy.deepcopy(page_Range.index)
+        mindex = page_Range.index
         needs = [3]
         for i in range(0, page_Range.num_columns):
             needs.append(i+NUM_METADATA_COLUMNS)
         while p_ind < page_Range.bOffSet+1:
-            for i in range(page_Range.num_columns+NUM_METADATA_COLUMNS):#needs:
+            for i in needs:
                 b_pages[i+p_ind] = copy.deepcopy(lstore.globals.diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind+i), i))
             p_ind = p_ind + step
         page_Range.merge_helper()
@@ -86,6 +86,7 @@ class Merger:
 
             t_row = 511
 
+        #lstore.globals.control.latch()
         #lstore.globals.control.acquire()
         p_ind = 0
         """
@@ -98,12 +99,9 @@ class Merger:
         #swap pages
         while p_ind < page_Range.bOffSet+1:
             for x in needs:
-                for i in range(512):
-                    address = Address(page_Range.prid, 0, p_ind+x, i)
-                    taddress = Address(page_Range.prid, 2, p_ind+x, i)
-                    val = lstore.globals.diskManager.read(table, taddress)
-                    lstore.globals.diskManager.overwrite(table, address, val)
-                #lstore.globals.diskManager.merge_replace_page(table, address)
+                address = Address(page_Range.prid, 0, p_ind+x)
+                taddress = Address(page_Range.prid, 2, p_ind+x)
+                lstore.globals.diskManager.merge_replace_page(table, address)
             p_ind = p_ind + step
         """
         while p_ind < page_Range.bOffSet:
@@ -112,7 +110,7 @@ class Merger:
             p_ind = p_ind + step
         """
         page_Range.tps = tid
-        lstore.globals.control.release()
+        lstore.globals.control.unlatch()
 
     def mergeLoop(self):
         t_ind = 0
