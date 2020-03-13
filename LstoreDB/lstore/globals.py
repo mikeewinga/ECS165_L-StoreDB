@@ -1,5 +1,6 @@
 from threading import BoundedSemaphore
 from lstore.disk_manager import DiskManager
+from lstore.latch import Latch
 #control = BoundedSemaphore(1)
 
 global tables
@@ -8,7 +9,7 @@ global cont
 global diskManager
 global access
 tables = []
-control = BoundedSemaphore(1)
+control = Latch()
 access = BoundedSemaphore(1)
 cont = BoundedSemaphore(1)
 diskManager = DiskManager()

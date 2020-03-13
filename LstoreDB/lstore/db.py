@@ -27,49 +27,49 @@ class Merger:
         return offset
 
     def merge(self,table, page_Range):
-        lstore.globals.control.acquire()
-        #print("merging", page_Range.prid, page_Range.tOffSet)
+        #lstore.globals.control.latch()
+        print("merging", page_Range.prid, page_Range.tOffSet)
         #acquire all required resources that are time critical
-        #clear delete_queue
-        page_Range.delete_queue = []
         #create copy of base pages (base schema, user data pages)and insert newTPS in each of them
         b_pages = {}
         p_ind = 0
         step = NUM_METADATA_COLUMNS + page_Range.num_columns
-        tid = copy.deepcopy(page_Range.cur_tid)
         stoper = page_Range.mOffSet - 1
-        mindex = copy.deepcopy(page_Range.index)
         needs = [3]
         for i in range(0, page_Range.num_columns):
             needs.append(i+NUM_METADATA_COLUMNS)
         while p_ind < page_Range.bOffSet+1:
-            for i in range(page_Range.num_columns+NUM_METADATA_COLUMNS):#needs:
-                b_pages[i+p_ind] = copy.deepcopy(lstore.globals.diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind+i), i))
+            for i in needs:
+                b_pages[i+p_ind] = lstore.globals.diskManager.merge_copy_page(table, Address(page_Range.prid, 0, p_ind+i), i)
             p_ind = p_ind + step
-        page_Range.merge_helper()
-        page_Range.mOffSet = copy.deepcopy(page_Range.tOffSet)
+        #lstore.globals.control.latch()
+        address = page_Range.merge_helper()
         #lstore.globals.control.release()
 
-
-        address = mindex.read(tid).copy()
         t_page = address.pagenumber
         t_row = address.row
+        print(t_page, stoper)
 
         #diskManager.debug_print_page(table, b_pages[(0, 1)])
         #look at last tail page, potentially not full
         for cur_page in range(t_page, stoper, -step):
-            for recNum in range (t_row, 0, -1):
+            for recNum in range (511, 0, -1):
                 address = Address(page_Range.prid, 1, cur_page, recNum)
                 base_rid = lstore.globals.diskManager.read(table, address+BASE_RID_COLUMN)
                 base_rid = int.from_bytes(base_rid, byteorder = "big")
-                baddress = mindex.read(base_rid).copy()
-                b = baddress
+                if base_rid == 0:
+                    continue
+                base_rid = (base_rid-1) % RANGESIZE
+                baddress = Address(page_Range.prid, 0, (base_rid//511)*step, (base_rid%511)+1)
                 baddress.change_flag(2)
                 tSchema = lstore.globals.diskManager.read(table, address+SCHEMA_ENCODING_COLUMN)
                 bSchema = lstore.globals.diskManager.read(table, baddress+SCHEMA_ENCODING_COLUMN)
                 tSchema = int.from_bytes(tSchema, byteorder = "big")
                 bSchema = int.from_bytes(bSchema, byteorder = "big")
 
+                bS = lstore.globals.diskManager.read(table, baddress+NUM_METADATA_COLUMNS)
+                bS = int.from_bytes(bS, byteorder = "big")
+                #print(bS)
                 schemaToUpdate = bSchema & tSchema #bitwise AND
 
                 resultingBaseSchema = bSchema & (~tSchema)  #bitwise AND_NOT
@@ -86,7 +86,8 @@ class Merger:
 
             t_row = 511
 
-        #lstore.globals.control.acquire()
+        lstore.globals.control.latch()
+        print("latched")
         p_ind = 0
         """
         #handle delete queue
@@ -98,12 +99,9 @@ class Merger:
         #swap pages
         while p_ind < page_Range.bOffSet+1:
             for x in needs:
-                for i in range(512):
-                    address = Address(page_Range.prid, 0, p_ind+x, i)
-                    taddress = Address(page_Range.prid, 2, p_ind+x, i)
-                    val = lstore.globals.diskManager.read(table, taddress)
-                    lstore.globals.diskManager.overwrite(table, address, val)
-                #lstore.globals.diskManager.merge_replace_page(table, address)
+                address = Address(page_Range.prid, 0, p_ind+x)
+                taddress = Address(page_Range.prid, 2, p_ind+x)
+                lstore.globals.diskManager.merge_replace_page(table, address)
             p_ind = p_ind + step
         """
         while p_ind < page_Range.bOffSet:
@@ -111,8 +109,9 @@ class Merger:
                 lstore.globals.diskManager.overwrite(table, Address(page_Range.prid, 0, i+p_ind,0), tid)
             p_ind = p_ind + step
         """
-        page_Range.tps = tid
-        lstore.globals.control.release()
+        page_Range.tps = copy.deepcopy(page_Range.temp)
+        print("unlatch")
+        lstore.globals.control.unlatch()
 
     def mergeLoop(self):
         t_ind = 0
