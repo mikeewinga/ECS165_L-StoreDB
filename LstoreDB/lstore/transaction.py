@@ -23,9 +23,11 @@ class Transaction:
     # If you choose to implement this differently this method must still 
     # return True if transaction commits or False on abort
     def run(self):
+        count = 0
         for query, args in self.queries:
             result = query(*args, action = ACQUIRE_LOCK)
             # If the query has failed to take the locks the transaction should abort
+            count += 1
             if result == False:
                 return self.abort()
         return self.commit()

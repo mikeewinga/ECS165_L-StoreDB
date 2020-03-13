@@ -112,7 +112,7 @@ class Table:
             is_locked = lstore.globals.lockManager.add_lock(INSERT, self.name, lock_address)
             return is_locked
         else:
-            return self.pageranges[prid].acquire_lock(self.current_Rid_base, INSERT)
+            return self.pageranges[prid].insert_acquire_lock(self.current_Rid_base)
 
     # def insert_release_lock(self, primary_key = None):
     #     if (primary_key):  # insert was committed, releasing lock on existing record
