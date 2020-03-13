@@ -37,12 +37,15 @@ class lockNode:
         # if the CurrentLock is empty
         if(self.total_locks == 0):
             return 1
+        # reader lock exists
+        if self.locks[X] > 0:
+            return 0
         # if CurrentLock has S and NewLock wants S
         if(self.locks[S] >= 0 and lock == S):
             return 1
         # if the sum of the CurrentLock and NewLock
         # is less than or equal to 4
-        for type in range(1,3):
+        for type in range(3,0,-1):
             sum = lock
             if(self.locks[type] > 0):
                 sum += type
