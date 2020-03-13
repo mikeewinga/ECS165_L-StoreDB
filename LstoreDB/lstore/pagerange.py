@@ -34,11 +34,12 @@ class PageRange:
             self.cur_tid = 2**64 - 1
             self.mOffSet = 0
             self.merge_f = 0
-            # initialize first set of base and tail pages
+            # initialize two sets of base pages
             for y in range(math.ceil(RANGESIZE/511)):
                 for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
                     base_address = Address(self.prid, 0, x + (y*self.step))
                     lstore.globals.diskManager.new_page(self.table_name, base_address, x + (y*self.step))
+            # initialize first set of tail pages
             for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
                 tail_address = Address(self.prid, 1, x)
                 lstore.globals.diskManager.new_page(self.table_name, tail_address, x)
@@ -74,7 +75,7 @@ class PageRange:
         lstore.globals.diskManager.append_write(self.table_name, address+BASE_RID_COLUMN, 0)
         for x in range(self.num_columns):
             lstore.globals.diskManager.append_write(self.table_name, address + (x+NUM_METADATA_COLUMNS), record.columns[x])
-        # expand new base pages if needed
+        # reset bOffset to next base page set if needed
         if not lstore.globals.diskManager.page_has_capacity(self.table_name, address):
             if rid == self.cap:
                 self.merge_f = 1
