@@ -37,16 +37,20 @@ INDEX_EXTENSION = "_index.txt"
 PAGE_DIR_EXTENSION = "_pageDir.txt"
 COLUMN_BLOCK_BYTES = PAGESIZE * COLUMN_BLOCK_PAGES
 
+ACQUIRE_LOCK = 0
+RELEASE_LOCK = 1
+COMMIT_ACTION = 2
+
 #lock types
 IS = 1
 IX = 2
-S  = 3 
+S  = 3
 X  = 4
 
 #lock levels
 DATABASE    = 0
 TABLE       = 1
-PAGERANGE   = 2 
+PAGERANGE   = 2
 PAGE        = 3
 ROW         = 4
 

@@ -1,12 +1,13 @@
-from template.db import Database
-from template.query import Query
-from template.transaction import Transaction
+from lstore.db import Database
+from lstore.query import Query
+from lstore.transaction import Transaction
 from time import process_time
 from random import choice, randrange
 
 # Student Id and 4 grades
 db = Database()
-grades_table = db.create_table('Grades', 0, 5)
+db.open('~/ECS165')
+grades_table = db.create_table('Grades', 5, 0)
 query = Query(grades_table)
 keys = []
 
@@ -20,7 +21,6 @@ print("Inserting 10k records took:  \t\t\t", insert_time_1 - insert_time_0)
 
 # Measuring update Performance
 update_cols = [
-    [randrange(0, 100), None, None, None, None],
     [None, randrange(0, 100), None, None, None],
     [None, None, randrange(0, 100), None, None],
     [None, None, None, randrange(0, 100), None],
@@ -28,13 +28,18 @@ update_cols = [
 ]
 
 t = Transaction()
-key = choice(keys)
-t.add_query(query.update, key, *choice(update_cols))
-t.add_query(query.select, key, 0, [1, 1, 1, 1, 1])
+for i in range(10):
+    key = choice(keys)
+    t.add_query(query.select, key, 0, [1, 1, 1, 1, 1])
+    t.add_query(query.update, key, *choice(update_cols))
+    t.add_query(query.select, key, 0, [1, 1, 1, 1, 1])
 t.run()
+
+db.close()
 
 exit()
 
+"""
 update_time_0 = process_time()
 for i in range(0, 10000):
     query.update(choice(keys), *(choice(update_cols)))
@@ -61,3 +66,4 @@ for i in range(0, 10000):
     query.delete(906659671 + i)
 delete_time_1 = process_time()
 print("Deleting 10k records took:  \t\t\t", delete_time_1 - delete_time_0)
+"""

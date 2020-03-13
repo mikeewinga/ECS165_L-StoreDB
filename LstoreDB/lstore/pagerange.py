@@ -209,3 +209,12 @@ class PageRange:
 
     def get_pagedir_dict(self):
         return self.index.indexDict
+
+    def acquire_lock(self, rid, query_opp):
+        #return lstore.globals.lockManager.add_lock(query_opp, self.table_name, self.index.read(rid)) # FIXME
+        return lstore.globals.fakeLockManager.getLock(self.table_name, self.index.read(rid), query_opp)
+
+    def insert_acquire_lock(self, rid):
+        address = Address(self.prid, 0, self.bOffSet)
+        address.row = (rid - 1) % 511 + 1
+        return lstore.globals.lockManager.add_lock(INSERT, self.table_name, address)

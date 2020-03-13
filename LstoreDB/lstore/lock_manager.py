@@ -1,6 +1,6 @@
 import threading
 import copy
-from config import *
+from lstore.config import *
 #import config
 
 class Lock:
@@ -336,6 +336,7 @@ lm.lock_tree.debug_print()
 lm.remove_lock()
 lm.lock_tree.debug_print()
 """
+
 """
 from address import Address
 address = Address(2, 1, 59, 123)
