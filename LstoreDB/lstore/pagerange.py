@@ -153,6 +153,7 @@ class PageRange:
         return self.tOffSet > self.mOffSet+(self.num_columns+NUM_METADATA_COLUMNS)*4-1
 
     def update(self, base_rid, tail_schema, record, tid, time):
+        lstore.globals.update_latch.latch()
         bAddress = self.index.read(base_rid)
         address = Address(self.prid, 1, self.tOffSet)
         tail_num_rows = lstore.globals.diskManager.page_num_records(self.table_name, address)
@@ -187,6 +188,7 @@ class PageRange:
         cur_base_schema = int.from_bytes(cur_base_schema,byteorder='big',signed=False)
         new_base_schema = cur_base_schema | tail_schema
         lstore.globals.diskManager.overwrite(self.table_name, bAddress+SCHEMA_ENCODING_COLUMN, new_base_schema)
+        lstore.globals.update_latch.unlatch()
 
     def delete(self, base_rid):
         address = self.index.read(base_rid)

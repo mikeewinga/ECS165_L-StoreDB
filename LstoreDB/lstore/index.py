@@ -1,6 +1,8 @@
 from lstore.config import *
 from lstore.address import Address
 import lstore.globals
+from lstore.latch import Latch
+
 """
 # optional: Indexes the specified column of the specified table to speed up select queries
 # This data structure is usually a B-Tree
@@ -112,13 +114,16 @@ class Index:
 class PageDirectory:
     def __init__(self):
         self.indexDict = {}
+        self.write_latch = Latch()
     """
     # add key-value pair mapping RID to page + offset
     :param value: {RID : [(base/tail, page_num), record_offset]}
     """
 
     def write(self, RID, value):
+        self.write_latch.latch()
         self.indexDict[RID] = value
+        self.write_latch.unlatch()
 
     """
     # find page + offset of given RID
