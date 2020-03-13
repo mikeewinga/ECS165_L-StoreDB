@@ -1,5 +1,8 @@
 from lstore.index import *
 import lstore.disk_manager
+import math
+import copy
+
 """
 Table class needs an b tree to show which page range it should
 operate on
@@ -22,6 +25,8 @@ class PageRange:
         self.base = prid * RANGESIZE
         self.cap = self.base + RANGESIZE
         self.delete_queue = []
+        self.step = self.num_columns+NUM_METADATA_COLUMNS
+        self.temp = self.tps
 
         if (is_new_range):
             self.bOffSet = 0
@@ -30,11 +35,11 @@ class PageRange:
             self.mOffSet = 0
             self.merge_f = 0
             # initialize first set of base and tail pages
+            for y in range(math.ceil(RANGESIZE/511)):
+                for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
+                    base_address = Address(self.prid, 0, x + (y*self.step))
+                    lstore.globals.diskManager.new_page(self.table_name, base_address, x + (y*self.step))
             for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
-                # self.pages[(0,x)] = Page()
-                # self.pages[(1,x)] = Page()
-                base_address = Address(self.prid, 0, x)
-                lstore.globals.diskManager.new_page(self.table_name, base_address, x)
                 tail_address = Address(self.prid, 1, x)
                 lstore.globals.diskManager.new_page(self.table_name, tail_address, x)
         else:
@@ -73,10 +78,8 @@ class PageRange:
         if not lstore.globals.diskManager.page_has_capacity(self.table_name, address):
             if rid == self.cap:
                 self.merge_f = 1
-            self.bOffSet = self.bOffSet + self.num_columns + NUM_METADATA_COLUMNS
-            for x in range(self.num_columns + NUM_METADATA_COLUMNS):
-                base_address = Address(self.prid, 0, x + self.bOffSet)
-                lstore.globals.diskManager.new_page(self.table_name, base_address, x)
+            else:
+                self.bOffSet = self.bOffSet + self.step
 
 
     def getOffset(self, schema, col_num):
@@ -113,6 +116,7 @@ class PageRange:
         # follow indirection column to updated tail records
         while next: # if next != 0, must follow tail records
             if (next >= self.tps):
+                #print(self.tps, next, self.cur_tid)
                 return record_wanted
             # get page number and offset of tail record
             address = self.index.read(next)
@@ -134,10 +138,15 @@ class PageRange:
         return record_wanted
 
     def merge_helper(self):
+        self.delete_queue = []
         self.tOffSet = self.tOffSet + self.num_columns + NUM_METADATA_COLUMNS
+        ret = self.index.read(self.cur_tid)
+        self.temp = copy.deepcopy(self.cur_tid)
         for x in range(self.num_columns + NUM_METADATA_COLUMNS):
             tail_address = Address(self.prid, 1, x + self.tOffSet)
             lstore.globals.diskManager.new_page(self.table_name, tail_address, x)
+        self.mOffSet = copy.deepcopy(self.tOffSet)
+        return ret
             
     def merge(self):
         # we merge four tail pages at a time (first three pages are full, fourth may be partially full)

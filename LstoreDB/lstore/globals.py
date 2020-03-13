@@ -2,6 +2,8 @@ from threading import BoundedSemaphore
 from lstore.disk_manager import DiskManager
 from lstore.lock_manager import LockManager
 from lstore.fakeLockManager import FakeLockManager
+from lstore.latch import Latch
+
 #control = BoundedSemaphore(1)
 
 global tables
@@ -13,7 +15,7 @@ global access
 global lockManager
 global fakeLockManager
 tables = []
-control = BoundedSemaphore(1)
+control = Latch()
 access = BoundedSemaphore(1)
 cont = BoundedSemaphore(1)
 update_latch = BoundedSemaphore(1)

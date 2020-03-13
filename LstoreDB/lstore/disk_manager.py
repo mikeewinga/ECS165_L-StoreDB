@@ -11,7 +11,6 @@ import copy
 class Bufferpool:
     def __init__(self):
         self.max_pages = BUFFERPOOL_SIZE
-        # { (string table_name, int page_range, (int base/tail, int page_num)) : Page() }
         self.page_map = OrderedDict()
 
     def contains_page(self, table_name, address):
@@ -31,28 +30,22 @@ class Bufferpool:
     -then goes to the record offset and reads it
     """
     def read(self, table_name, address):
-        self.pin_page(table_name, address)  # note that this would be critical section in multithreading
         page = self.page_map[(table_name, address.pagerange, address.page)]
         self.page_map.move_to_end((table_name, address.pagerange, address.page))
         read_value = page.read(address.row)
-        self.unpin_page(table_name, address)
         return read_value
 
     def append_write(self, table_name, address, value):
-        self.pin_page(table_name, address)  # note that this would be critical section in multithreading
         page = self.page_map[(table_name, address.pagerange, address.page)]
         page.write(value)
         page.dirty = True
         self.page_map.move_to_end((table_name, address.pagerange, address.page))
-        self.unpin_page(table_name, address)
 
     def overwrite(self, table_name, address, value):
-        self.pin_page(table_name, address)  # note that this would be critical section in multithreading
         page = self.page_map[(table_name, address.pagerange, address.page)]
         page.overwrite_record(address.row, value)
         page.dirty = True
         self.page_map.move_to_end((table_name, address.pagerange, address.page))
-        self.unpin_page(table_name, address)
 
     """
     param address: the Address object of the original base page to copy (flag = 0)
@@ -60,7 +53,8 @@ class Bufferpool:
     def merge_copy_page(self, table_name, address):
         page = self.page_map[(table_name, address.pagerange, address.page)]
         new_page = page.copy()
-        new_page.unpin()
+        new_page.clearpin()
+        new_page.pin()
         # change the base/tail flag to 2, so address refers to merge base page
         self.page_map[(table_name, address.pagerange, (2, address.pagenumber))] = new_page
 
@@ -73,7 +67,6 @@ class Bufferpool:
         merge_address = address.copy()
         merge_address.change_flag(2)  # change the base/tail flag to 2, so address refers to merge base page
         merge_page = self.page_map[(table_name, merge_address.pagerange, merge_address.page)]
-        merge_page.pin()
         orig_page.unpin()
         merge_page.unpin()
         # delete the entry for merge page address from page_map
@@ -94,7 +87,6 @@ class Bufferpool:
     Delete the LRU page
     """
     def evict(self):
-        lstore.globals.cont.acquire()
         # popItem pops and returns (key, value) in FIFO order with False arg
         address_to_page = self.page_map.popitem(False)
         table_name = address_to_page[0][0]
@@ -103,29 +95,19 @@ class Bufferpool:
         page = address_to_page[1]
         if (page.pin_count > 0):  # page is in use
             self.page_map[(table_name, page_range_num, page_num)] = page  # re-add the page back into dictionary
-            lstore.globals.cont.release() 
             return ()
         else:
-            lstore.globals.cont.release()
             return address_to_page
 
     def add_page(self, table_name, address, page):
-        lstore.globals.cont.acquire()
         self.page_map[(table_name, address.pagerange, address.page)] = page
         # self.page_map.move_to_end((table_name, address.pagerange, address.page))
-        lstore.globals.cont.release()
 
     def pin_page(self, table_name, address):
-        lstore.globals.cont.acquire()
-        #self.page_map[(table_name, address.pagerange, address.page)].pin_count += 1
         self.page_map[(table_name, address.pagerange, address.page)].pin()
-        lstore.globals.cont.release()
 
     def unpin_page(self, table_name, address):
-        lstore.globals.cont.acquire()
-        #self.page_map[(table_name, address.pagerange, address.page)].pin_count -= 1
         self.page_map[(table_name, address.pagerange, address.page)].unpin()
-        lstore.globals.cont.release()
 
 
 class DiskManager:
@@ -234,6 +216,7 @@ class DiskManager:
     param address: address of original base page, flag = 0
     """
     def merge_copy_page(self, table_name, address, column_index):
+        lstore.globals.access.acquire()
         if (not self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
         self.bufferpool.pin_page(table_name, address)
@@ -247,13 +230,10 @@ class DiskManager:
                 self.flush_page(evict_page)
         merge_page_address = address.copy()
         merge_page_address.change_flag(2)
-        # allocate a new page in file and save the physical file offset in table_index
-        file_offset = self.new_page(table_name, merge_page_address, column_index)
-        table_index = self.active_table_indexes[table_name]
-        # change the base/tail flag to 2, so address refers to merge base page
-        table_index[(merge_page_address.pagerange, merge_page_address.page)] = [file_offset, 1]
+
         self.bufferpool.merge_copy_page(table_name, address)
         self.bufferpool.unpin_page(table_name, address)
+        lstore.globals.access.release()
         return merge_page_address
 
     """
@@ -266,13 +246,7 @@ class DiskManager:
         self.bufferpool.merge_replace_page(table_name, address)
         merge_address = address.copy()
         merge_address.change_flag(2)
-        table_index = self.active_table_indexes[table_name]
-        # grab the file offset mapped to the merge page address
-        new_file_offset = table_index[(merge_address.pagerange, merge_address.page)][FILE_OFFSET]
-        # replace the old file offset for the original address with new offset
-        table_index[(address.pagerange, address.page)][FILE_OFFSET] = new_file_offset
-        # delete merge page address entry from table_index
-        del table_index[(merge_address.pagerange, merge_address.page)]
+
         lstore.globals.access.release()
 
     def delete_page(self, table_name, base_tail, page_num):
@@ -282,7 +256,9 @@ class DiskManager:
         lstore.globals.access.acquire()
         if (not self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
+        self.bufferpool.pin_page(table_name, address)
         ret = self.bufferpool.read(table_name, address)
+        self.bufferpool.unpin_page(table_name, address)
         lstore.globals.access.release()
         return copy.copy(ret)
 
@@ -290,7 +266,9 @@ class DiskManager:
         lstore.globals.access.acquire()
         if (not self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
+        self.bufferpool.pin_page(table_name, address)
         self.bufferpool.append_write(table_name, address, value)
+        self.bufferpool.unpin_page(table_name, address)
         table_index = self.active_table_indexes[table_name]
         table_index[(address.pagerange, address.page)][NUM_RECORDS] += 1
         lstore.globals.access.release()
@@ -299,7 +277,9 @@ class DiskManager:
         lstore.globals.access.acquire()
         if (not self.bufferpool.contains_page(table_name, address)):
             self.load_page_from_disk(table_name, address)
+        self.bufferpool.pin_page(table_name, address)
         self.bufferpool.overwrite(table_name, address, value)
+        self.bufferpool.unpin_page(table_name, address)
         lstore.globals.access.release()
 
     def page_has_capacity(self, table_name, address):
