@@ -96,7 +96,13 @@ class lockTree:
                 else: 
                     node.total_locks -= 1
                     return 1
-            return 0
+            else:
+                if(opperation == 'add'):
+                    node.total_locks -= 1
+                    return 0
+                else: 
+                    node.total_locks += 1
+                    return 0
         # if the child node exists, traverse it
         else:
             next_node = path.pop(0)
