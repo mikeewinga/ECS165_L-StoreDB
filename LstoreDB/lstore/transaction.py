@@ -34,8 +34,8 @@ class Transaction:
 
     def abort(self):
         #ask database/lock manager to release the locks taken so far
-        # lstore.globals.lockManager.remove_lock() #FIXME
-        lstore.globals.fakeLockManager.releaseLock()
+        lstore.globals.lockManager.remove_lock() #FIXME
+        #lstore.globals.fakeLockManager.releaseLock()
         return False
 
     def commit(self):
@@ -43,8 +43,8 @@ class Transaction:
         for query, args in self.queries:
             query(*args, action = COMMIT_ACTION)
         # release all the locks at once
-        # lstore.globals.lockManager.remove_lock() #FIXME
-        lstore.globals.fakeLockManager.releaseLock()
+        lstore.globals.lockManager.remove_lock() #FIXME
+        #lstore.globals.fakeLockManager.releaseLock()
         return True
 
 
