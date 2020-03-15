@@ -148,7 +148,7 @@ class PageRange:
             lstore.globals.diskManager.new_page(self.table_name, tail_address, x)
         self.mOffSet = copy.deepcopy(self.tOffSet)
         return ret
-            
+
     def merge(self):
         # we merge four tail pages at a time (first three pages are full, fourth may be partially full)
         return self.tOffSet > self.mOffSet+(self.num_columns+NUM_METADATA_COLUMNS)*4-1
