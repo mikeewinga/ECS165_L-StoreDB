@@ -104,15 +104,15 @@ class Table:
         self.current_Rid_base = self.current_Rid_base + 1
         lstore.globals.control.release()
 
-    def insert_lock(self):
-        prid = (self.current_Rid_base - 1) // RANGESIZE
-        # IF page range id > than current max prid -> take the lock for conceptual address of new page range / record
-        if prid > self.current_Prid:
-            lock_address = Address(prid, 0, 0, 1)  # hardcode address of where the new record is supposed to be inserted
-            is_locked = lstore.globals.lockManager.add_lock(INSERT, self.name, lock_address)
-            return is_locked
-        else:
-            return self.pageranges[prid].insert_acquire_lock(self.current_Rid_base)
+    # def insert_lock(self):
+    #     prid = (self.current_Rid_base - 1) // RANGESIZE
+    #     # IF page range id > than current max prid -> take the lock for conceptual address of new page range / record
+    #     if prid > self.current_Prid:
+    #         lock_address = Address(prid, 0, 0, 1)  # hardcode address of where the new record is supposed to be inserted
+    #         is_locked = lstore.globals.lockManager.add_lock(INSERT, self.name, lock_address)
+    #         return is_locked
+    #     else:
+    #         return self.pageranges[prid].insert_acquire_lock(self.current_Rid_base)
 
     # def insert_release_lock(self, primary_key = None):
     #     if (primary_key):  # insert was committed, releasing lock on existing record
