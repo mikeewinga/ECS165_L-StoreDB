@@ -114,18 +114,6 @@ class Table:
         else:
             return self.pageranges[prid].insert_acquire_lock(self.current_Rid_base)
 
-    # def insert_release_lock(self, primary_key = None):
-    #     if (primary_key):  # insert was committed, releasing lock on existing record
-    #         self.index.create_index(self.key)
-    #         rid = self.index.locate(self.key, primary_key)[0]
-    #         prid = (rid - 1) // RANGESIZE
-    #         return self.pageranges[prid].release_lock(rid, "insert")
-    #     else: # insert was aborted, releasing lock on conceptual address
-    #         # we're assuming that no other new page ranges have been added by other threads since the address was locked
-    #         prid = (self.current_Rid_base - 1) // RANGESIZE
-    #         lock_address = Address(prid, 0, 0, 1)
-    #         return lstore.globals.lockManager.releaseLock(self.name, lock_address, "insert")
-
     """
     Converts the schema bit string to schema bit array
     :param schema: integer bit string
@@ -171,7 +159,7 @@ class Table:
         return True
 
     def update(self, key, tail_schema, *columns):
-        lstore.globals.control.acquire()
+        lstore.globals.control.latch()
         self.index.create_index(self.key)
         rid = self.index.locate(self.key, key)[0]
         self.index.update(rid, self.return_record(rid, key, [1, 1, 1, 1, 1]).columns, *columns)
@@ -180,7 +168,7 @@ class Table:
         prid = (rid-1)//RANGESIZE
         self.pageranges[prid].update(rid, tail_schema, record, self.current_Rid_tail, self.get_timestamp())
         self.current_Rid_tail = self.current_Rid_tail - 1
-        lstore.globals.control.release()
+        lstore.globals.control.unlatch()
 
     def update_lock(self, key):
         self.index.create_index(self.key)
