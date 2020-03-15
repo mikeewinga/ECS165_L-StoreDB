@@ -68,6 +68,7 @@ class lockTree:
     # this continues the recursive process to find or create the 
     # correct lockNode
     def traverse(self, node, path, opperation, lock_change):
+        path = list(path)
         if not len(path):
             if(opperation == 'add'):
                 if(node.compare_locks(lock_change)):
@@ -120,6 +121,7 @@ class lockTree:
 
     # this will start the add or remove lock process
     def change_lock(self, path, opperation, lock_change):
+        path = list(path)
         lock_changed = 0
         try:
             self.root.child[path[0]]
@@ -205,7 +207,6 @@ class LockManager:
         lock = target.get(path_R)
         if lock:
             if new_lock.row > lock.row:
-                """
                 lock_complete = self.lock_tree.change_lock(path_R, 'remove', lock.row)
                 lock_complete = self.lock_tree.change_lock(path_P, 'remove', lock.page)
                 lock_complete = self.lock_tree.change_lock(path_PR, 'remove', lock.page_range)
@@ -214,16 +215,13 @@ class LockManager:
                 lock_complete = self.lock_tree.change_lock(path_PR, 'add', new_lock.page_range)
                 lock_complete = self.lock_tree.change_lock(path_P, 'add', new_lock.page)
                 lock_complete = self.lock_tree.change_lock(path_R, 'add', new_lock.row)
-                """
                 target[path_R] = new_lock
             return 1
         else:
-            """
             lock_complete = self.lock_tree.change_lock(path_T, 'add', new_lock.table)
             lock_complete = self.lock_tree.change_lock(path_PR, 'add', new_lock.page_range)
             lock_complete = self.lock_tree.change_lock(path_P, 'add', new_lock.page)
             lock_complete = self.lock_tree.change_lock(path_R, 'add', new_lock.row)
-            """
             target[path_R] = new_lock
             return 1
         """
@@ -246,12 +244,11 @@ class LockManager:
             for path, lock in target.items():
 
                 query_opp = lock.row
-
-                """
-                path_T = [table_name]
-                path_PR = [table_name, page_range]
-                path_P = [table_name, page_range, page]
-                path_R = [table_name, page_range, page, row]
+                path = list(path)
+                path_T = (path[0])
+                path_PR = (path[0], path[1])
+                path_P = (path[0], path[1], path[2])
+                path_R = (path[0], path[1], path[2], path[3])
 
                 if query_opp == X:
                     lock_complete = self.lock_tree.change_lock(path_R, 'remove', X)
@@ -263,7 +260,6 @@ class LockManager:
                     lock_complete = self.lock_tree.change_lock(path_P, 'remove', IS)
                     lock_complete = self.lock_tree.change_lock(path_PR, 'remove', IS)
                     lock_complete = self.lock_tree.change_lock(path_T, 'remove', IS)
-                """
             del self.lock_dict[thread_id]
         """
         if lock_complete:
