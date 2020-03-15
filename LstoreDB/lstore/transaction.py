@@ -35,7 +35,6 @@ class Transaction:
     def abort(self):
         #ask database/lock manager to release the locks taken so far
         lstore.globals.lockManager.remove_lock()
-        print("abort")
         return False
 
     def commit(self):

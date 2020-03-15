@@ -2,7 +2,6 @@ import threading
 import copy
 from lstore.config import *
 import lstore.globals
-#import config
 
 class Lock:
     def __init__(self, table, page_range, page, row):
@@ -190,9 +189,6 @@ class LockManager:
             target = {}
             self.lock_dict[thread_id] = target
 
-        #page_range = str(address.pagerange)
-        #page = str(address.page)
-        #row = str(address.row)
         path_T = (table_name)
         path_PR = (table_name, address.pagerange)
         path_P = (table_name, address.pagerange, address.page)
@@ -228,14 +224,6 @@ class LockManager:
             target[path_R] = new_lock
             lstore.globals.lmcon.unlatch()
             return 1
-        """
-        if lock_complete:
-            target[path_R] = new_lock
-            #self.lock_dict[thread_id] = self.locks
-            return 1
-        else:
-            return 0
-        """
         lstore.globals.lmcon.unlatch()
         return 0
 
@@ -268,102 +256,3 @@ class LockManager:
                     lock_complete = self.lock_tree.change_lock(path_T, 'remove', IS)
             del self.lock_dict[thread_id]
         lstore.globals.lmcon.unlatch()
-        """
-        if lock_complete:
-            del self.lock_dict[thread_id]
-            return 1
-        else:
-            return 0
-        """
-
-"""
-# TEST SCRIPT FOR LOCKTREE
-tree = lockTree()
-
-print(" ")
-path1 = ["Grades", 1, 58, 275]
-path2 = ["Grades", 0, 68, 175]
-add = "add"
-remove= "remove"
-
-path1 = ["Grades", 1, 58, 275]
-tree.change_lock(path1, add, 3)
-path1 = ["Grades", 1, 58]
-tree.change_lock(path1, add, 1)
-path1 = ["Grades", 1]
-tree.change_lock(path1, add, 1)
-path1 = ["Grades"]
-tree.change_lock(path1, add, 1)
-tree.debug_print()
-
-path1 = ["Grades"]
-tree.change_lock(path1, add, 1)
-path1 = ["Grades", 1]
-tree.change_lock(path1, add, 1)
-path1 = ["Grades", 1, 58]
-tree.change_lock(path1, add, 1)
-path1 = ["Grades", 1, 58, 275]
-tree.change_lock(path1, add, 3)
-tree.debug_print()
-
-# tree.change_lock(path1, add, 3)
-# path1 = ["Grades", 1, 58, 275]
-# tree.debug_print()
-
-tree.change_lock(path1, remove, 2)
-path1 = ["Grades", 1, 58, 275]
-tree.debug_print()
-
-tree.change_lock(path1, remove, 1)
-path1 = ["Grades", 1, 58, 275]
-tree.debug_print()
-"""
-
-"""
-#TEST SCRIPT FOR LOCKMANAGER
-class Address:
-    #Base/Tail flag, Page-range number, Page number, Row number
-    def __init__(self, pagerange, flag, pagenumber, row = None):
-        self.pagerange = pagerange
-        self.flag = flag  # values: 0--base, 1--tail, 2--base page copy used for merge
-        self.pagenumber = pagenumber
-        self.page = (flag, pagenumber)
-        self.row = row
-
-tableName = 'Grades'
-address = Address(2, 0, 58, 275)
-address1 = Address(2, 0, 58, 277)
-address2 = Address(3, 0, 36, 120)
-
-lm =  LockManager()
-
-lm.add_lock(INSERT, tableName, address)
-lm.lock_tree.debug_print()
-lm.remove_lock()
-lm.lock_tree.debug_print()
-"""
-
-"""
-from address import Address
-address = Address(2, 1, 59, 123)
-address2 = Address(1, 4, 61, 101)
-lm = LockManager()
-print("1")
-for key in lm.lock_dict:
-    for val in lm.lock_dict[key]:
-        print(key, val)
-lm.add_lock(INSERT, 'Grades', address)
-lm.add_lock(INSERT, 'Grades', address2)
-
-print("2")
-for key in lm.lock_dict:
-    for val in lm.lock_dict[key]:
-        print(key, val)
-
-lm.remove_lock()
-
-print("3")
-for key in lm.lock_dict:
-    for val in lm.lock_dict[key]:
-        print(key, val)
-"""

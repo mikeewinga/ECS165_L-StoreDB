@@ -69,7 +69,6 @@ class Merger:
 
                 bS = lstore.globals.diskManager.read(table, baddress+NUM_METADATA_COLUMNS)
                 bS = int.from_bytes(bS, byteorder = "big")
-                #print(bS)
                 schemaToUpdate = bSchema & tSchema #bitwise AND
 
                 resultingBaseSchema = bSchema & (~tSchema)  #bitwise AND_NOT
@@ -147,7 +146,6 @@ class Database():
         for tbl in lstore.globals.tables:
             tbl.close()
         lstore.globals.diskManager.close()
-        print("database closed\n")
 
     """
     # Creates a new table
