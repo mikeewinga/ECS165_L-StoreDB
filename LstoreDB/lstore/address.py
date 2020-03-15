@@ -13,9 +13,16 @@ class Address:
         new_page_num = self.page[1] + offset
         return Address(self.pagerange, self.flag, new_page_num, self.row)
 
+    def __str__(self):
+        output = "(" + str(self.pagerange) + ", " + str(self.page) + ", " + str(self.row) + ")"
+        return output
+
     def copy(self):
         return Address(self.pagerange, self.flag, self.pagenumber, self.row)
 
     def change_flag(self, flag):
         self.flag = flag
         self.page = (flag, self.pagenumber)
+
+    def get_tuple(self):
+        return (self.pagerange, self.page, self.row)

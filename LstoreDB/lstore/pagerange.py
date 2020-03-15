@@ -34,11 +34,12 @@ class PageRange:
             self.cur_tid = 2**64 - 1
             self.mOffSet = 0
             self.merge_f = 0
-            # initialize first set of base and tail pages
+            # initialize two sets of base pages
             for y in range(math.ceil(RANGESIZE/511)):
                 for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
                     base_address = Address(self.prid, 0, x + (y*self.step))
                     lstore.globals.diskManager.new_page(self.table_name, base_address, x + (y*self.step))
+            # initialize first set of tail pages
             for x in range((self.num_columns + NUM_METADATA_COLUMNS)):
                 tail_address = Address(self.prid, 1, x)
                 lstore.globals.diskManager.new_page(self.table_name, tail_address, x)
@@ -74,7 +75,7 @@ class PageRange:
         lstore.globals.diskManager.append_write(self.table_name, address+BASE_RID_COLUMN, 0)
         for x in range(self.num_columns):
             lstore.globals.diskManager.append_write(self.table_name, address + (x+NUM_METADATA_COLUMNS), record.columns[x])
-        # expand new base pages if needed
+        # reset bOffset to next base page set if needed
         if not lstore.globals.diskManager.page_has_capacity(self.table_name, address):
             if rid == self.cap:
                 self.merge_f = 1
@@ -153,6 +154,7 @@ class PageRange:
         return self.tOffSet > self.mOffSet+(self.num_columns+NUM_METADATA_COLUMNS)*4-1
 
     def update(self, base_rid, tail_schema, record, tid, time):
+        lstore.globals.update_latch.latch()
         bAddress = self.index.read(base_rid)
         address = Address(self.prid, 1, self.tOffSet)
         tail_num_rows = lstore.globals.diskManager.page_num_records(self.table_name, address)
@@ -187,6 +189,7 @@ class PageRange:
         cur_base_schema = int.from_bytes(cur_base_schema,byteorder='big',signed=False)
         new_base_schema = cur_base_schema | tail_schema
         lstore.globals.diskManager.overwrite(self.table_name, bAddress+SCHEMA_ENCODING_COLUMN, new_base_schema)
+        lstore.globals.update_latch.unlatch()
 
     def delete(self, base_rid):
         address = self.index.read(base_rid)
@@ -209,3 +212,12 @@ class PageRange:
 
     def get_pagedir_dict(self):
         return self.index.indexDict
+
+    def acquire_lock(self, rid, query_opp):
+        return lstore.globals.lockManager.add_lock(query_opp, self.table_name, self.index.read(rid)) # FIXME
+        #return lstore.globals.fakeLockManager.getLock(self.table_name, self.index.read(rid), query_opp)
+
+    def insert_acquire_lock(self, rid):
+        address = Address(self.prid, 0, self.bOffSet)
+        address.row = (rid - 1) % 511 + 1
+        return lstore.globals.lockManager.add_lock(INSERT, self.table_name, address)
