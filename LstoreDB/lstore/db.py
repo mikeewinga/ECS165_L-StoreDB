@@ -10,7 +10,7 @@ import lstore.globals
 
 class Merger:
     def __init__(self):
-        self._running = 1
+        self._running = 0#1
 
     def getOffset(self,schema, col_num):
         if (col_num < 1):
@@ -117,7 +117,7 @@ class Merger:
         t_ind = 0
         pr_ind = 0
         while self._running:
-            if t_ind < len(lstore.globals.tables):
+            if  0 and t_ind < len(lstore.globals.tables):
                 pagenum = len(lstore.globals.tables[t_ind].pageranges)
                 while pr_ind < pagenum:
                     if(lstore.globals.tables[t_ind].pageranges[pr_ind].merge_f and lstore.globals.tables[t_ind].pageranges[pr_ind].merge()):
@@ -128,7 +128,7 @@ class Merger:
                 pr_ind = 0
                 t_ind = t_ind + 1
             else:
-                time.sleep(0)
+                time.sleep(1)
                 t_ind = 0
 
 class Database():
