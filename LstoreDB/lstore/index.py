@@ -28,14 +28,17 @@ class Index:
     :return: list of RID's
     """
     def locate(self, column, value):
+        lstore.globals.icon.latch()
         #intList = [] # saves the RID's of matching records
         if self.indexDict[column].get(value):  # check if given key exists in indexDict
             ridList = self.indexDict[column][value]
             # convert byte format to RID numbers
             #for x in byteList:
                 #intList.append(x)
+            lstore.globals.icon.unlatch()
             return ridList
         else:
+            lstore.globals.icon.unlatch()
             return []
 
     """
@@ -45,6 +48,7 @@ class Index:
         pass
 
     def update(self, rid, original, *input):
+        lstore.globals.icon.latch()
         for i in range(0, len(input)):
             if input[i]:
                 if self.hasIndex[i]:
@@ -56,6 +60,7 @@ class Index:
                         F.append(rid)
                     else:
                         self.indexDict[i][input[i]] = [rid]
+        lstore.globals.icon.unlatch()
 
     """
     # optional: Create index on specific column
@@ -63,7 +68,9 @@ class Index:
     """
 
     def create_index(self, column_number):
+        lstore.globals.icon.latch()
         if self.hasIndex[column_number]:
+            lstore.globals.icon.unlatch()
             return
         else:
             self.hasIndex[column_number] = 1
@@ -89,6 +96,7 @@ class Index:
                         rid_list = rid_list.append(rid)
                     else:  # the key doesn't exist in index yet
                         self.indexDict[column_number][key] = [rid]
+        lstore.globals.icon.unlatch()
 
     """
     deletes record from index
@@ -131,15 +139,21 @@ class PageDirectory:
     """
 
     def read(self, RID):
+        self.write_latch.acquire()
         if self.indexDict.get(RID):
+            self.write_latch.release()
             return self.indexDict[RID]
+        self.write_latch.release()
         return 0
 
     """
     deletes record from index
     """
     def delete(self, RID, column_number=0):
+        self.write_latch.latch()
         if self.indexDict.get(RID):
             del self.indexDict[RID]
+            self.write_latch.unlatch()
             return 1
+        self.write_latch.unlatch()
         return 0

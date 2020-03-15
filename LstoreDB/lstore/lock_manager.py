@@ -1,6 +1,7 @@
 import threading
 import copy
 from lstore.config import *
+import lstore.globals
 #import config
 
 class Lock:
@@ -181,6 +182,7 @@ class LockManager:
     
     # path is [table, page_range, page, row]
     def add_lock(self, query_opp, table_name, address):
+        lstore.globals.lmcon.latch()
         thread_id = threading.get_ident()
         target = None
         target = self.lock_dict.get(thread_id)
@@ -216,6 +218,7 @@ class LockManager:
                 lock_complete = self.lock_tree.change_lock(path_P, 'add', new_lock.page)
                 lock_complete = self.lock_tree.change_lock(path_R, 'add', new_lock.row)
                 target[path_R] = new_lock
+            lstore.globals.lmcon.unlatch()
             return 1
         else:
             lock_complete = self.lock_tree.change_lock(path_T, 'add', new_lock.table)
@@ -223,6 +226,7 @@ class LockManager:
             lock_complete = self.lock_tree.change_lock(path_P, 'add', new_lock.page)
             lock_complete = self.lock_tree.change_lock(path_R, 'add', new_lock.row)
             target[path_R] = new_lock
+            lstore.globals.lmcon.unlatch()
             return 1
         """
         if lock_complete:
@@ -232,10 +236,12 @@ class LockManager:
         else:
             return 0
         """
+        lstore.globals.lmcon.unlatch()
         return 0
 
 
     def remove_lock(self):
+        lstore.globals.lmcon.latch()
         thread_id = threading.get_ident()
         target = self.lock_dict.get(thread_id)
         lock_complete = 0
@@ -261,6 +267,7 @@ class LockManager:
                     lock_complete = self.lock_tree.change_lock(path_PR, 'remove', IS)
                     lock_complete = self.lock_tree.change_lock(path_T, 'remove', IS)
             del self.lock_dict[thread_id]
+        lstore.globals.lmcon.unlatch()
         """
         if lock_complete:
             del self.lock_dict[thread_id]

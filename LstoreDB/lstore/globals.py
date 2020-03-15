@@ -8,6 +8,8 @@ from lstore.latch import Latch
 
 global tables
 global control
+global icon
+global lmcon
 global cont
 global update_latch
 global diskManager
@@ -16,6 +18,8 @@ global lockManager
 global fakeLockManager
 tables = []
 control = Latch()
+icon = Latch()
+lmcon = Latch()
 access = BoundedSemaphore(1)
 cont = BoundedSemaphore(1)
 update_latch = Latch()
