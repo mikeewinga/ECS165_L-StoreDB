@@ -7,7 +7,7 @@ import threading
 from random import choice, randint, sample, seed
 
 db = Database()
-db.open('/home/pkhorsand/165a-winter-2020-private/db')
+#db.open('/home/pkhorsand/165a-winter-2020-private/db')
 db.open('~/ECS165')
 grades_table = db.create_table('Grades', 5, 0)
 

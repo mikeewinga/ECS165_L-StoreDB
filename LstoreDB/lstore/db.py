@@ -10,7 +10,7 @@ import lstore.globals
 
 class Merger:
     def __init__(self):
-        self._running = 0#1
+        self._running = 0
 
     def getOffset(self,schema, col_num):
         if (col_num < 1):

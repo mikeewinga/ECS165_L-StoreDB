@@ -18,8 +18,6 @@ for i in range(0, 2000):
     key = 92106429 + i
     records[key] = [key, randint(0, 20), randint(0, 20), randint(0, 20), randint(0, 20)]
     query.insert(*records[key])
-    #t.add_query(query.insert, *records[key]) #FIXME uncomment later
-
 
 keys = sorted(list(records.keys()))
 for key in keys:

@@ -29,8 +29,6 @@ class Query:
         if (action == COMMIT_ACTION):
             #package information into records and pass records to table
             self.table.insert(*columns)
-        else:
-            return self.table.insert_lock()
 
     """
     # Read columns from a record with specified key
@@ -45,8 +43,6 @@ class Query:
     def select(self, key, column, query_columns, action = COMMIT_ACTION):
         if (action == COMMIT_ACTION):
             record_set = self.table.select(key, column, query_columns)
-            #print("select record:")  #FIXME print debug
-            #for record in record_set: print(str(record))  #FIXME print debug
             return record_set
         else:
             return self.table.select_lock(key, column)
@@ -71,7 +67,6 @@ class Query:
                 bit = bit // 2
             #ridr = int.from_bytes(rid[0], byteorder = "big")
             self.table.update(key, schema_encoding, *columns)
-            #print("update columns: " + str(columns))  #FIXME print debug
         else:
             return self.table.update_lock(key)
 
@@ -99,7 +94,6 @@ class Query:
                 for cur in mList:
                     #curr = int.from_bytes(cur, byteorder = "big")
                     sum += cur.columns[aggregate_column_index]
-            #print("sum operation: " + str(sum))  # FIXME print debug
             return sum
         else: # IF ALL LOCKS ACQUIRED, RETURN TRUE, ELSE RETURN FALSE
             for key in range (start_range, (end_range+1)):
